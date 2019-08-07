@@ -1,0 +1,4 @@
+apache-airflow==1.10.4
+
+pyspark==2.4.3
+pyspark-stubs==2.4.0.post1

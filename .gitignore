@@ -1,0 +1,12 @@
+# Byte-compiled/optimized/dll files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyCharm and VirtualEnv files
+.idea/
+venv/
+
+# OS-specific rubbish
+.DS_Store
+desktop.ini
