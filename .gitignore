@@ -10,3 +10,9 @@ venv/
 # OS-specific rubbish
 .DS_Store
 desktop.ini
+
+# Airflow stuff
+airflow_home/*
+!airflow_home/dags
+!airflow_home/plugins
+!airflow_home/__init__.py
