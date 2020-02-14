@@ -41,6 +41,7 @@ init: venv
 	--conn_host localhost --conn_schema http --conn_port 8998 ; \
 	airflow connections -a --conn_id spark --conn_type HTTP \
 	--conn_host localhost --conn_schema http --conn_port 18080 ; \
+	airflow variables -s pyspark_path `pwd`/pyspark ; \
 	deactivate ;
 
 up:
