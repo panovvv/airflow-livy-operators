@@ -10,20 +10,18 @@ from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 
 ENDPOINT = "sessions"
-
 ALLOWED_LANGUAGES = ["spark", "pyspark", "sparkr", "sql"]
-
-LOG_PAGE_SIZE = 100
+LOG_PAGE_LINES = 100
 
 
 class LivySessionCreationSensor(BaseSensorOperator):
     def __init__(
         self,
         session_id,
+        poke_interval,
+        timeout,
         task_id,
         http_conn_id="livy",
-        poke_interval=60,
-        timeout=60 * 60 * 24 * 7,
         soft_fail=False,
         mode="poke",
     ):
@@ -58,10 +56,10 @@ class LivyStatementSensor(BaseSensorOperator):
         self,
         session_id,
         statement_id,
+        poke_interval,
+        timeout,
         task_id,
         http_conn_id="livy",
-        poke_interval=60,
-        timeout=60 * 60 * 24 * 7,
         soft_fail=False,
         mode="poke",
     ):
@@ -129,8 +127,10 @@ class LivySessionOperator(BaseOperator):
             self.code = code
 
         def __str__(self) -> str:
+            dashes = 80
             return (
-                f"\n{{\n  Statement, kind: {self.kind}\n  code:\n{self.code}\n}}"
+                f"\n{{\n  Statement, kind: {self.kind}"
+                f"\n  code:\n{'-'*dashes}\n{self.code}\n{'-'*dashes}\n}}"
             )
 
         __repr__ = __str__
@@ -159,16 +159,15 @@ class LivySessionOperator(BaseOperator):
         name=None,
         conf=None,
         heartbeat_timeout=None,
-        session_start_timeout_sec=46,
-        session_start_poll_period_sec=5,
+        session_start_timeout_sec=120,
+        session_start_poll_period_sec=10,
         statemt_timeout_minutes=10,
-        statemt_poll_period_sec=15,
+        statemt_poll_period_sec=20,
         http_conn_id="livy",
         *args,
         **kwargs,
     ):
         super(LivySessionOperator, self).__init__(*args, **kwargs)
-        self.statements = statements
         if kind in ALLOWED_LANGUAGES or kind is None:
             self.kind = kind
         else:
@@ -176,6 +175,7 @@ class LivySessionOperator(BaseOperator):
                 f"Can not create session with kind '{kind}'!\n"
                 f"Allowed session kinds: {ALLOWED_LANGUAGES}"
             )
+        self.statements = statements
         self.proxy_user = proxy_user
         self.jars = jars
         self.py_files = py_files
@@ -197,16 +197,17 @@ class LivySessionOperator(BaseOperator):
         self.http_conn_id = http_conn_id
 
     def execute(self, context):
-        """ TODO
-        1. Creates a session in Livy
-        2. Polls API until it's ready to execute statements
-        3. Submits provided statement to the session in sequence
-        4. Polls API until each to be completed or failed.
-        5. Prints session log into airflow_code task log.
+        """
+        1. Create a session in Livy
+        2. Poll API until it's ready to execute statements
+        3. Submit provided statements to the session, one by one
+        4. For each submitted statement, poll API until it's completed or failed.
+           If one of the statements fail, do not proceed with the remaining ones.
+        5. Close the session.
         """
         session_id = None
         try:
-            session_id = self.create_session(context)
+            session_id = self.create_session()
             logging.info(f"Session has been created with id = {session_id}.")
             LivySessionCreationSensor(
                 session_id,
@@ -232,7 +233,7 @@ class LivySessionOperator(BaseOperator):
                     task_id=self.task_id,
                     http_conn_id=self.http_conn_id,
                     poke_interval=self.statemt_poll_period_sec,
-                    timeout=self.statemt_timeout_minutes,
+                    timeout=self.statemt_timeout_minutes * 60,
                 ).execute(context)
             logging.info(
                 f"All {len(self.statements)} statements in session {session_id} "
@@ -246,7 +247,7 @@ class LivySessionOperator(BaseOperator):
             if session_id:
                 self.close_session(session_id)
 
-    def create_session(self, context):
+    def create_session(self):
         headers = {"X-Requested-By": "airflow", "Content-Type": "application/json"}
         unfiltered_payload = {
             "kind": self.kind,
@@ -287,14 +288,27 @@ class LivySessionOperator(BaseOperator):
         return statement_id
 
     def spill_session_logs(self, session_id):
-
-        # TODO flip through pages
-        logging.info("Full session logs:")
-        endpoint = f"{ENDPOINT}/{session_id}/log?from=0"
-        response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
-        logs = json.loads(response.content)["log"]
-        for log in logs:
-            logging.info(log)
+        dashes = 50
+        logging.info(f"{'-'*dashes}Full log for session {session_id}{'-'*dashes}")
+        endpoint = f"{ENDPOINT}/{session_id}/log?from="
+        hook = HttpHook(method="GET", http_conn_id=self.http_conn_id)
+        line_from = 0
+        line_to = LOG_PAGE_LINES
+        while True:
+            prepd_endpoint = endpoint + f"{line_from}&size={line_to}"
+            response = json.loads(hook.run(prepd_endpoint).content)
+            logs = response["log"]
+            for log in logs:
+                logging.info(log.replace("\\n", "\n"))
+            actual_line_from = response["from"]
+            total_lines = response["total"]
+            actual_lines = len(logs)
+            if actual_line_from + actual_lines >= total_lines:
+                logging.info(
+                    f"{'-' * dashes}End of full log for session {session_id}{'-' * dashes}"
+                )
+                break
+            line_from = actual_line_from + actual_lines
 
     def close_session(self, session_id):
         logging.info(f"Closing session with id = {session_id}")

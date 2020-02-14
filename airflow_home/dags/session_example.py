@@ -9,12 +9,6 @@ except ImportError:
     # Import statement for IDE with the local folder structure
     from airflow_home.plugins.livy_session_plugin import LivySessionOperator
 
-default_args = {
-    "owner": "airflow",
-}
-
-# TODO Wrtap code lines
-
 dag = DAG(
     "session_example",
     description="Running Spark jobs via Livy Sessions",
@@ -33,16 +27,23 @@ val df = Seq(
 ).toDF("{{ params.your_string }}", "{{ run_id }}")
 df.show()
 """
+
 pyspark_code = """
 import sys
+
 print(sys.version)
-spark.range(1000 * 1000 * {{ params.your_number }}).count()
-df = sqlContext.createDataFrame([("One", 1), ("Two", 2), ("Three", 3), ("Four", 4)], ("{{ params.your_string }}", "{{ run_id }}"))
+spark.range(1000 * 1000 * {{params.your_number}}).count()
+df = sqlContext.createDataFrame(
+    [("One", 1), ("Two", 2), ("Three", 3), ("Four", 4)],
+    ("{{ params.your_string }}", "{{ run_id }}"),
+)
 df.show()
 """
 
 sparkr_code = """
-df <- as.DataFrame(list("{{ params.your_number }}", "{{ run_id }}", "Three", "Four"), "{{ params.your_string }}")
+df <- as.DataFrame(
+    list("{{ params.your_number }}", "{{ run_id }}", "Three", "Four"),
+    "{{ params.your_string }}")
 head(df)
 """
 
