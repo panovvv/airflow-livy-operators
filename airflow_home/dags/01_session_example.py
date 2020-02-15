@@ -10,7 +10,7 @@ except ImportError:
     from airflow_home.plugins.livy_session_plugin import LivySessionOperator
 
 dag = DAG(
-    "session_example",
+    "01_session_example",
     description="Running Spark jobs via Livy Sessions",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
@@ -52,13 +52,13 @@ SELECT CONCAT('{{ params.your_string }}', ' in task instance ', '{{ run_id }}')
 """
 
 t1 = LivySessionOperator(
+    name="livy_session_example_{{ run_id }}",
     statements=[
         LivySessionOperator.Statement(code=scala_code, kind="spark"),
         LivySessionOperator.Statement(code=pyspark_code, kind="pyspark"),
         LivySessionOperator.Statement(code=sparkr_code, kind="sparkr"),
         LivySessionOperator.Statement(code=sql_code, kind="sql"),
     ],
-    name="livy_session_example_{{ run_id }}",
     params={"your_number": 5, "your_string": "Hello world"},
     task_id="livy_session_example",
     dag=dag,

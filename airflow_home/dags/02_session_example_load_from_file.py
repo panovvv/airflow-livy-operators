@@ -1,8 +1,11 @@
+import logging
 import os
 from datetime import datetime
 
 from airflow import DAG
 from airflow.models import Variable
+from airflow.operators.python_operator import PythonOperator
+from jinja2 import Template
 
 try:
     # Import statement for Airflow when it loads new operators into airflow.operators
@@ -11,23 +14,32 @@ except ImportError:
     # Import statement for IDE with the local folder structure
     from airflow_home.plugins.livy_session_plugin import LivySessionOperator
 
+
+def read_code_from_file(task_instance, **context):
+    session_files_path = Variable.get("session_files_path")
+    join_code_path = os.path.join(session_files_path, "join_2_files.py")
+    logging.info(f"Reading the session code file from {join_code_path}")
+    with open(join_code_path) as join_code_file:
+        join_code = join_code_file.read()
+    template = Template(join_code)
+    rendered_code = template.render(context)
+    task_instance.xcom_push(key="join_code", value=rendered_code)
+    return "\n" + rendered_code
+
+
 dag = DAG(
-    "session_example_load_from_file",
+    "02_session_example_load_from_file",
     description="Running Spark jobs via Livy Sessions, loading statenent from file",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,
 )
 
-pyspark_path = Variable.get("pyspark_path")
-pyspark_code_path = os.path.join(pyspark_path, "session_join_2_files.py")
-with open(pyspark_code_path) as code_file:
-    pyspark_code = code_file.read()
-
-t1 = LivySessionOperator(
-    statements=[LivySessionOperator.Statement(code=pyspark_code, kind="pyspark")],
-    name="livy_session_example_load_from_file_{{ run_id }}",
-    params={
+get_session_code = PythonOperator(
+    task_id="get_session_code",
+    provide_context=True,
+    python_callable=read_code_from_file,
+    op_kwargs={
         "file1_path": "file:///data/grades.csv",
         "file1_sep": ",",
         "file1_infer_schema": "true",
@@ -51,6 +63,19 @@ t1 = LivySessionOperator(
         "output_header": "true",
         "output_mode": "overwrite",
     },
+    dag=dag,
+)
+
+run_session = LivySessionOperator(
+    name="livy_session_example_load_from_file_{{ run_id }}",
+    statements=[
+        LivySessionOperator.Statement(
+            code="{{ task_instance.xcom_pull(key='join_code', task_ids='get_session_code') }}",
+            kind="pyspark",
+        )
+    ],
     task_id="livy_session_example_load_from_file",
     dag=dag,
 )
+
+run_session << get_session_code

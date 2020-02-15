@@ -37,11 +37,12 @@ init: venv
 	export AIRFLOW__CORE__LOAD_EXAMPLES=False ; \
 	. ./venv/bin/activate ; \
 	airflow initdb ; \
+	airflow variables -s session_files_path `pwd`/sessions ; \
+	airflow variables -s batch_files_path `pwd`/batches ; \
 	airflow connections -a --conn_id livy --conn_type HTTP \
 	--conn_host localhost --conn_schema http --conn_port 8998 ; \
 	airflow connections -a --conn_id spark --conn_type HTTP \
 	--conn_host localhost --conn_schema http --conn_port 18080 ; \
-	airflow variables -s pyspark_path `pwd`/pyspark ; \
 	deactivate ;
 
 up:
