@@ -58,7 +58,7 @@ get_session_code = PythonOperator(
         "file2_join_column": "SSN",
         "output_columns": "file1.`Last name`, file1.`First name`, file1.SSN, "
         "file2.Address1, file2.Address2",
-        "output_path_base": "file:///data/livy_session_example_load_from_file",
+        "output_path": "file:///data/output/livy_session_example_load_from_file",
         "output_sep": "\\t",
         "output_header": "true",
         "output_mode": "overwrite",

@@ -164,6 +164,7 @@ class LivySessionOperator(BaseOperator):
         statemt_timeout_minutes=10,
         statemt_poll_period_sec=20,
         http_conn_id="livy",
+        spill_logs=False,
         *args,
         **kwargs,
     ):
@@ -195,6 +196,7 @@ class LivySessionOperator(BaseOperator):
         self.statemt_timeout_minutes = statemt_timeout_minutes
         self.statemt_poll_period_sec = statemt_poll_period_sec
         self.http_conn_id = http_conn_id
+        self.spill_logs = spill_logs
 
     def execute(self, context):
         """
@@ -245,6 +247,8 @@ class LivySessionOperator(BaseOperator):
             raise
         finally:
             if session_id:
+                if self.spill_logs:
+                    self.spill_session_logs(session_id)
                 self.close_session(session_id)
 
     def create_session(self):
@@ -268,8 +272,8 @@ class LivySessionOperator(BaseOperator):
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
 
-        logging.info("Creating a session in Livy... Payload:")
-        logging.info(json.dumps(payload, indent=2))
+        logging.info(f"Creating a session in Livy... "
+                     f"Payload:\n{json.dumps(payload, indent=2)}")
         response = HttpHook(http_conn_id=self.http_conn_id).run(
             ENDPOINT, json.dumps(payload), headers,
         )

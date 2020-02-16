@@ -56,3 +56,7 @@ up:
 
 down:
 	pkill -f airflow | true
+
+copy-batches:
+	rsync -arv --exclude=".DS_Store" --exclude="desktop.ini" \
+	./batches ~/data/vpanov/bigdata-docker-compose/data/

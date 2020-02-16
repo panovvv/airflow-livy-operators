@@ -37,16 +37,16 @@ ON file1.{{ file1_join_column }} = file2.{{ file2_join_column }}
 """
 output = spark.sql(sql)
 
-output.show()
+print("First 50 lines of result:")
+output.show(50)
 
 # Uncomment lines below to save the result to a file.
-
 # Run ID contains a date with semicolons (:), most URIs can't contain those.
 # safe_run_id = '{{ run_id|replace(":", "-") }}'
 # output_params = {
 #     "sep": "{{ output_sep }}",
 #     "header": "{{ output_header }}",
 #     "mode": "{{ output_mode }}",
-#     "path": f"{{ output_path_base }}/{safe_run_id}/{{ task.task_id }}",
+#     "path": f"{{ output_path }}/{safe_run_id}/{{ task.task_id }}",
 # }
 # output.write.csv(**output_params)
