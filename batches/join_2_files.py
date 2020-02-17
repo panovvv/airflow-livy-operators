@@ -62,7 +62,7 @@ parser.add_argument("-file2_schema", type=str, required=True, help=SAME_DOC)
 parser.add_argument("-file2_join_column", type=str, required=True, help=SAME_DOC)
 
 parser.add_argument(
-    "output_path",
+    "-output_path",
     type=str,
     help="Location to store result at. Available prefixes are: file:///, hdfs://, s3://",
 )
@@ -124,12 +124,11 @@ output = spark.sql(sql)
 
 output.show(50)
 
-# Uncomment lines below to save the result to a file.
-# output_params = {
-#     "sep": args.output_sep,
-#     "header": args.output_header,
-#     "mode": args.output_mode,
-#     "path": args.output_path,
-# }
-#
-# output.write.csv(**output_params)
+if args.output_path:
+    output_params = {
+        "sep": args.output_sep,
+        "header": args.output_header,
+        "mode": args.output_mode,
+        "path": args.output_path,
+    }
+    output.write.csv(**output_params)

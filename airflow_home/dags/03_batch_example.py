@@ -24,7 +24,6 @@ t1 = LivyBatchOperator(
     arguments=[
         "file:///data/grades.csv",
         "file:///data/ssn-address.tsv",
-        "file:///data/output/livy_batch_example/",
         "-file1_sep=,",
         "-file1_header=true",
         "-file1_schema=`Last name` STRING, `First name` STRING, SSN STRING, "
@@ -37,6 +36,7 @@ t1 = LivyBatchOperator(
         "-output_header=true",
         "-output_columns=file1.`Last name`, file1.`First name`, file1.SSN, "
         "file2.Address1, file2.Address2",
+        # add -output_path="file:///data/output/livy_batch_example" to save result to a file
     ],
     task_id="livy_batch_example",
     dag=dag,
