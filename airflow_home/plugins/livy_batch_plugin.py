@@ -1,5 +1,14 @@
+"""
+Makes use of both Livy Batch mode and Spark REST API.
+Spark REST API is only invoked to get an actual status of application,
+as in YARN mode (TODO WHEN???) it always shows as "succeeded" even when underlying job fails.
+
+https://livy.incubator.apache.org/docs/latest/rest-api.html
+https://spark.apache.org/docs/latest/monitoring.html#rest-api
+"""
 import json
 import logging
+from json import JSONDecodeError
 
 from airflow.exceptions import AirflowException
 from airflow.hooks.http_hook import HttpHook
@@ -8,7 +17,10 @@ from airflow.plugins_manager import AirflowPlugin
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 
-ENDPOINT = "batches"
+LIVY_ENDPOINT = "batches"
+SPARK_ENDPOINT = "api/v1/applications"
+YARN_ENDPOINT = "ws/v1/cluster/apps"
+TRACKING_METHODS = ["livy", "spark", "yarn"]
 LOG_PAGE_LINES = 100
 
 
@@ -35,7 +47,7 @@ class LivyBatchSensor(BaseSensorOperator):
 
     def poke(self, context):
         logging.info(f"Getting batch {self.batch_id} status...")
-        endpoint = f"{ENDPOINT}/{self.batch_id}"
+        endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
         batch = json.loads(response.content)
         state = batch["state"]
@@ -75,7 +87,10 @@ class LivyBatchOperator(BaseOperator):
         conf=None,
         timeout_minutes=10,
         poll_period_sec=20,
-        http_conn_id="livy",
+        verify_in="livy",
+        http_conn_id_livy="livy",
+        http_conn_id_spark="spark",
+        http_conn_id_yarn="yarn",
         spill_logs=True,
         *args,
         **kwargs,
@@ -99,13 +114,22 @@ class LivyBatchOperator(BaseOperator):
         self.conf = conf
         self.timeout_minutes = timeout_minutes
         self.poll_period_sec = poll_period_sec
-        self.http_conn_id = http_conn_id
+        if verify_in in TRACKING_METHODS:
+            self.verify_in = verify_in
+        else:
+            raise AirflowException(
+                f"Can not create batch operator with tracking method "
+                f"'{verify_in}'!\nAllowed methods: {TRACKING_METHODS}"
+            )
+        self.http_conn_id_livy = http_conn_id_livy
+        self.http_conn_id_spark = http_conn_id_spark
+        self.http_conn_id_yarn = http_conn_id_yarn
         self.spill_logs = spill_logs
 
     def execute(self, context):
         """
         1. Submit a batch to Livy
-        2. Poll API until it's ready
+        2. Poll API until it's ready TODO
         """
         batch_id = None
         try:
@@ -114,19 +138,32 @@ class LivyBatchOperator(BaseOperator):
             LivyBatchSensor(
                 batch_id,
                 task_id=self.task_id,
-                http_conn_id=self.http_conn_id,
+                http_conn_id=self.http_conn_id_livy,
                 poke_interval=self.poll_period_sec,
                 timeout=self.timeout_minutes * 60,
             ).execute(context)
+            if self.verify_in in ["spark", "yarn"]:
+                app_id = self.get_spark_app_id(batch_id)
+                logging.info(f"Found app id '{app_id}' for batch id {batch_id}.")
+                if self.verify_in == "spark":
+                    self.check_spark_app_status(app_id)
+                else:
+                    self.check_yarn_app_status(app_id)
+                logging.info(
+                    f"App '{app_id}' associated with batch {batch_id} completed!"
+                )
         except AirflowException:
             if batch_id:
                 self.spill_batch_logs(batch_id)
+                self.close_batch(batch_id)
+                batch_id = None
             raise
         finally:
             if batch_id:
                 if self.spill_logs:
                     self.spill_batch_logs(batch_id)
                 self.close_batch(batch_id)
+        return batch_id
 
     def submit_batch(self):
         headers = {"X-Requested-By": "airflow", "Content-Type": "application/json"}
@@ -149,18 +186,99 @@ class LivyBatchOperator(BaseOperator):
             "conf": self.conf,
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
-        logging.info(f"Submitting a batch to Livy... "
-                     f"Payload:\n{json.dumps(payload, indent=2)}")
-        response = HttpHook(http_conn_id=self.http_conn_id).run(
-            ENDPOINT, json.dumps(payload), headers
+        logging.info(
+            f"Submitting a batch to Livy... "
+            f"Payload:\n{json.dumps(payload, indent=2)}"
+        )
+        response = HttpHook(http_conn_id=self.http_conn_id_livy).run(
+            LIVY_ENDPOINT, json.dumps(payload), headers
         )
         return json.loads(response.content)["id"]
+
+    def get_spark_app_id(self, batch_id):
+        logging.info(f"Getting Spark app id from Livy API for batch {batch_id}...")
+        endpoint = f"{LIVY_ENDPOINT}/{batch_id}"
+        response = HttpHook(method="GET", http_conn_id=self.http_conn_id_livy).run(
+            endpoint
+        )
+        try:
+            application_id = json.loads(response.content)["appId"]
+            if not application_id:
+                raise AirflowException(f'Cannot parse application id ($."appId")')
+        except (JSONDecodeError, LookupError, AirflowException):
+            pp_response = (
+                json.dumps(json.loads(response.content), indent=2)
+                if "application/json" in response.headers["Content-Type"]
+                else response.content
+            )
+            logging.error(
+                f"Can not parse JSON response from Livy REST API for batch id={batch_id}. "
+                f"Response was:\n{pp_response}"
+            )
+            raise
+        return application_id
+
+    def check_spark_app_status(self, app_id):
+        logging.info(f"Getting app status (id={app_id}) from Spark REST API...")
+        endpoint = f"{SPARK_ENDPOINT}/{app_id}/jobs"
+        response = HttpHook(method="GET", http_conn_id=self.http_conn_id_spark).run(
+            endpoint
+        )
+        try:
+            jobs = json.loads(response.content)
+            expected_status = "SUCCEEDED"
+            for job in jobs:
+                job_id = job["jobId"]
+                job_status = job["status"]
+                if job_status != expected_status:
+                    raise AirflowException(
+                        f"Spark job '{job_id}' associated with application '{app_id}' "
+                        f"is '{job_status}', expected status is '{expected_status}'"
+                    )
+        except (JSONDecodeError, LookupError):
+            pp_response = (
+                json.dumps(json.loads(response.content), indent=2)
+                if "application/json" in response.headers["Content-Type"]
+                else response.content
+            )
+            logging.error(
+                f"Can not parse JSON response from Spark REST API for app id={app_id}. "
+                f"Response was:\n{pp_response}"
+            )
+            raise
+
+    def check_yarn_app_status(self, app_id):
+        logging.info(f"Getting app status (id={app_id}) from YARN RM REST API...")
+        endpoint = f"{YARN_ENDPOINT}/{app_id}"
+        response = HttpHook(method="GET", http_conn_id=self.http_conn_id_yarn).run(
+            endpoint
+        )
+        try:
+            app = json.loads(response.content)
+            app = app["app"]
+            status = app["finalStatus"]
+        except (JSONDecodeError, LookupError):
+            pp_response = (
+                json.dumps(json.loads(response.content), indent=2)
+                if "application/json" in response.headers["Content-Type"]
+                else response.content
+            )
+            logging.error(
+                f"Can not parse JSON response from YARN RM REST API for app id={app_id}. "
+                f"Response was:\n{pp_response}"
+            )
+            raise
+        expected_status = "SUCCEEDED"
+        if status != expected_status:
+            raise AirflowException(
+                f"YARN app {app_id} is '{status}', expected status is '{expected_status}'"
+            )
 
     def spill_batch_logs(self, batch_id):
         dashes = 50
         logging.info(f"{'-'*dashes}Full log for batch {batch_id}{'-'*dashes}")
-        endpoint = f"{ENDPOINT}/{batch_id}/log?from="
-        hook = HttpHook(method="GET", http_conn_id=self.http_conn_id)
+        endpoint = f"{LIVY_ENDPOINT}/{batch_id}/log?from="
+        hook = HttpHook(method="GET", http_conn_id=self.http_conn_id_livy)
         line_from = 0
         line_to = LOG_PAGE_LINES
         while True:
@@ -181,8 +299,10 @@ class LivyBatchOperator(BaseOperator):
 
     def close_batch(self, batch_id):
         logging.info(f"Closing batch with id = {batch_id}")
-        batch_endpoint = f"{ENDPOINT}/{batch_id}"
-        HttpHook(method="DELETE", http_conn_id=self.http_conn_id).run(batch_endpoint)
+        batch_endpoint = f"{LIVY_ENDPOINT}/{batch_id}"
+        HttpHook(method="DELETE", http_conn_id=self.http_conn_id_livy).run(
+            batch_endpoint
+        )
         logging.info(f"Batch {batch_id} has been closed")
 
 

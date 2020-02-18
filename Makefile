@@ -1,5 +1,5 @@
 help:
-	@echo "clean - remove Python and Airflow debris"
+	@echo "clean - remove Python and Airflow debris                        TODO UPDATE"
 	@echo "venv - install venv with all requirements for Airflow"
 	@echo "up - bring up Airflow Docker compose infrastructure"
 	@echo "down - tear down Airflow Docker compose infrastructure"
@@ -43,6 +43,8 @@ init: venv
 	--conn_host localhost --conn_schema http --conn_port 8998 ; \
 	airflow connections -a --conn_id spark --conn_type HTTP \
 	--conn_host localhost --conn_schema http --conn_port 18080 ; \
+	airflow connections -a --conn_id yarn --conn_type HTTP \
+	--conn_host localhost --conn_schema http --conn_port 8088 ; \
 	deactivate ;
 
 up:
@@ -58,5 +60,4 @@ down:
 	pkill -f airflow | true
 
 copy-batches:
-	rsync -arv --exclude=".DS_Store" --exclude="desktop.ini" \
-	./batches ~/data/vpanov/bigdata-docker-compose/data/
+	rsync -arv ./batches/*.py ~/data/vpanov/bigdata-docker-compose/data/batches/

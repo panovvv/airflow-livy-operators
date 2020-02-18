@@ -244,6 +244,7 @@ class LivySessionOperator(BaseOperator):
         except AirflowException:
             if session_id:
                 self.spill_session_logs(session_id)
+                self.spill_logs = False
             raise
         finally:
             if session_id:
@@ -272,8 +273,10 @@ class LivySessionOperator(BaseOperator):
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
 
-        logging.info(f"Creating a session in Livy... "
-                     f"Payload:\n{json.dumps(payload, indent=2)}")
+        logging.info(
+            f"Creating a session in Livy... "
+            f"Payload:\n{json.dumps(payload, indent=2)}"
+        )
         response = HttpHook(http_conn_id=self.http_conn_id).run(
             ENDPOINT, json.dumps(payload), headers,
         )

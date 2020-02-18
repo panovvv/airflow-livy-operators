@@ -6,7 +6,7 @@ try:
     # Import statement for Airflow when it loads new operators into airflow.operators
     from airflow.operators import LivySessionOperator
 except ImportError:
-    # Import statement for IDE with the local folder structure
+    # Import statement for IDE with the local folder structur
     from airflow_home.plugins.livy_session_plugin import LivySessionOperator
 
 dag = DAG(
@@ -17,6 +17,9 @@ dag = DAG(
     catchup=False,
 )
 
+
+# See ready statements with parameter values substituted
+# in the "Rendered template" tab of a running task.
 scala_code = """
 spark.range(1000 * 1000 * {{ params.your_number }}).count()
 val df = Seq(

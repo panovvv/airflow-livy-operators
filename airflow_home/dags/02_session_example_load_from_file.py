@@ -1,3 +1,9 @@
+"""
+Sessions are okay unless you have to write more than one-liners.
+That's where things get ugly - they can't be included as string literals due to
+their size, so we store them in a file. Jinja templates make it hard/impossible
+to run, debug and test it.
+"""
 import logging
 import os
 from datetime import datetime
@@ -29,7 +35,7 @@ def read_code_from_file(task_instance, **context):
 
 dag = DAG(
     "02_session_example_load_from_file",
-    description="Running Spark jobs via Livy Sessions, loading statenent from file",
+    description="Running Spark jobs via Livy Sessions, loading statement from file",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,

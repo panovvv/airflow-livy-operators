@@ -3,8 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# PyCharm and VirtualEnv files
-.idea/
+# VirtualEnv files
 venv/
 
 # OS-specific rubbish
@@ -20,3 +19,7 @@ airflow_home/*
 # Those get created when you run Pyspark scripts locally
 metastore_db/
 derby.log
+
+# Ignore all Idea project files but Run profiles
+.idea/*
+!.idea/runConfigurations/

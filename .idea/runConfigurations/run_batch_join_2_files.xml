@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="run batch join_2_files" type="PythonConfigurationType" factoryName="Python">
+    <module name="airflow-livy-plugins" />
+    <option name="INTERPRETER_OPTIONS" value="" />
+    <option name="PARENT_ENVS" value="true" />
+    <envs>
+      <env name="PYTHONUNBUFFERED" value="1" />
+    </envs>
+    <option name="SDK_HOME" value="$PROJECT_DIR$/venv/bin/python" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/batches" />
+    <option name="IS_MODULE_SDK" value="false" />
+    <option name="ADD_CONTENT_ROOTS" value="true" />
+    <option name="ADD_SOURCE_ROOTS" value="true" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/batches/join_2_files.py" />
+    <option name="PARAMETERS" value="&quot;file://$PROJECT_DIR$/../bigdata-docker-compose/data/grades.csv&quot; &quot;file://$PROJECT_DIR$/../bigdata-docker-compose/data/ssn-address.tsv&quot; -file1_sep=, -file1_header=true -file1_schema=&quot;`Last name` STRING, `First name` STRING, SSN STRING, Test1 INT, Test2 INT, Test3 INT, Test4 INT, Final INT, Grade STRING&quot; -file1_join_column=SSN -file2_header=false -file2_schema=&quot;`Last name` STRING, `First name` STRING, SSN STRING, Address1 STRING, Address2 STRING&quot; -file2_join_column=SSN -output_header=true -output_columns=&quot;file1.`Last name`, file1.`First name`, file1.SSN, file2.Address1, file2.Address2&quot;" />
+    <option name="SHOW_COMMAND_LINE" value="false" />
+    <option name="EMULATE_TERMINAL" value="false" />
+    <option name="MODULE_MODE" value="false" />
+    <option name="REDIRECT_INPUT" value="false" />
+    <option name="INPUT_FILE" value="" />
+    <method v="2" />
+  </configuration>
+</component>
