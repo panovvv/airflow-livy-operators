@@ -20,8 +20,21 @@ from airflow.utils.decorators import apply_defaults
 LIVY_ENDPOINT = "batches"
 SPARK_ENDPOINT = "api/v1/applications"
 YARN_ENDPOINT = "ws/v1/cluster/apps"
-TRACKING_METHODS = ["livy", "spark", "yarn"]
+VERIFICATION_METHODS = ["spark", "yarn"]
 LOG_PAGE_LINES = 100
+
+
+def log_response_error(lookup_path, response, batch_id=None):
+    msg = "Can not parse JSON response."
+    if batch_id is not None:
+        msg += f" Batch id={batch_id}."
+    pp_response = (
+        json.dumps(json.loads(response.content), indent=2)
+        if "application/json" in response.headers["Content-Type"]
+        else response.content
+    )
+    msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
+    logging.error(msg)
 
 
 class LivyBatchSensor(BaseSensorOperator):
@@ -49,20 +62,22 @@ class LivyBatchSensor(BaseSensorOperator):
         logging.info(f"Getting batch {self.batch_id} status...")
         endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
-        batch = json.loads(response.content)
-        state = batch["state"]
-        if (state == "starting") or (state == "running"):
+        try:
+            state = json.loads(response.content)["state"]
+        except (JSONDecodeError, LookupError):
+            log_response_error("$.state", response, self.batch_id)
+            raise
+        if state in ["starting", "running"]:
             logging.info(
-                f"Batch {self.batch_id} has not finished yet " f"(state is '{state}')"
+                f"Batch {self.batch_id} has not finished yet (state is '{state}')"
             )
             return False
-        elif state == "success":
+        if state == "success":
+            logging.info(f"Batch {self.batch_id} has finished successfully!")
             return True
-        else:
-            raise AirflowException(f"Batch {self.batch_id} failed with state '{state}'")
+        raise AirflowException(f"Batch {self.batch_id} failed with state '{state}'")
 
 
-# TODO DATACLASS?
 class LivyBatchOperator(BaseOperator):
     template_fields = ["name", "arguments"]
 
@@ -87,7 +102,7 @@ class LivyBatchOperator(BaseOperator):
         conf=None,
         timeout_minutes=10,
         poll_period_sec=20,
-        verify_in="livy",
+        verify_in=None,
         http_conn_id_livy="livy",
         http_conn_id_spark="spark",
         http_conn_id_yarn="yarn",
@@ -114,12 +129,12 @@ class LivyBatchOperator(BaseOperator):
         self.conf = conf
         self.timeout_minutes = timeout_minutes
         self.poll_period_sec = poll_period_sec
-        if verify_in in TRACKING_METHODS:
+        if verify_in in VERIFICATION_METHODS or verify_in is None:
             self.verify_in = verify_in
         else:
             raise AirflowException(
-                f"Can not create batch operator with tracking method "
-                f"'{verify_in}'!\nAllowed methods: {TRACKING_METHODS}"
+                f"Can not create batch operator with verification method "
+                f"'{verify_in}'!\nAllowed methods: {VERIFICATION_METHODS}"
             )
         self.http_conn_id_livy = http_conn_id_livy
         self.http_conn_id_spark = http_conn_id_spark
@@ -129,7 +144,9 @@ class LivyBatchOperator(BaseOperator):
     def execute(self, context):
         """
         1. Submit a batch to Livy
-        2. Poll API until it's ready TODO
+        2. Poll API until it's ready
+        3. If an additional verification method is specified, retrieve it and
+        disregard  the batch job status from Livy.
         """
         batch_id = None
         try:
@@ -142,7 +159,11 @@ class LivyBatchOperator(BaseOperator):
                 poke_interval=self.poll_period_sec,
                 timeout=self.timeout_minutes * 60,
             ).execute(context)
-            if self.verify_in in ["spark", "yarn"]:
+            if self.verify_in in VERIFICATION_METHODS:
+                logging.info(
+                    f"Additionally verifying status for batch id {batch_id} "
+                    f"via {self.verify_in}..."
+                )
                 app_id = self.get_spark_app_id(batch_id)
                 logging.info(f"Found app id '{app_id}' for batch id {batch_id}.")
                 if self.verify_in == "spark":
@@ -152,14 +173,14 @@ class LivyBatchOperator(BaseOperator):
                 logging.info(
                     f"App '{app_id}' associated with batch {batch_id} completed!"
                 )
-        except AirflowException:
-            if batch_id:
+        except Exception as ex:
+            if batch_id is not None:
                 self.spill_batch_logs(batch_id)
                 self.close_batch(batch_id)
                 batch_id = None
-            raise
+            raise AirflowException(ex)
         finally:
-            if batch_id:
+            if batch_id is not None:
                 if self.spill_logs:
                     self.spill_batch_logs(batch_id)
                 self.close_batch(batch_id)
@@ -187,13 +208,17 @@ class LivyBatchOperator(BaseOperator):
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
         logging.info(
-            f"Submitting a batch to Livy... "
+            f"Submitting the batch to Livy... "
             f"Payload:\n{json.dumps(payload, indent=2)}"
         )
         response = HttpHook(http_conn_id=self.http_conn_id_livy).run(
             LIVY_ENDPOINT, json.dumps(payload), headers
         )
-        return json.loads(response.content)["id"]
+        try:
+            return json.loads(response.content)["id"]
+        except (JSONDecodeError, LookupError):
+            log_response_error("$.id", response)
+            raise
 
     def get_spark_app_id(self, batch_id):
         logging.info(f"Getting Spark app id from Livy API for batch {batch_id}...")
@@ -202,21 +227,10 @@ class LivyBatchOperator(BaseOperator):
             endpoint
         )
         try:
-            application_id = json.loads(response.content)["appId"]
-            if not application_id:
-                raise AirflowException(f'Cannot parse application id ($."appId")')
+            return json.loads(response.content)["appId"]
         except (JSONDecodeError, LookupError, AirflowException):
-            pp_response = (
-                json.dumps(json.loads(response.content), indent=2)
-                if "application/json" in response.headers["Content-Type"]
-                else response.content
-            )
-            logging.error(
-                f"Can not parse JSON response from Livy REST API for batch id={batch_id}. "
-                f"Response was:\n{pp_response}"
-            )
+            log_response_error("$.appId", response, batch_id)
             raise
-        return application_id
 
     def check_spark_app_status(self, app_id):
         logging.info(f"Getting app status (id={app_id}) from Spark REST API...")
@@ -230,21 +244,17 @@ class LivyBatchOperator(BaseOperator):
             for job in jobs:
                 job_id = job["jobId"]
                 job_status = job["status"]
+                logging.info(
+                    f"Job id {job_id} associated with application '{app_id}' "
+                    f"is '{job_status}'"
+                )
                 if job_status != expected_status:
                     raise AirflowException(
-                        f"Spark job '{job_id}' associated with application '{app_id}' "
+                        f"Job id '{job_id}' associated with application '{app_id}' "
                         f"is '{job_status}', expected status is '{expected_status}'"
                     )
         except (JSONDecodeError, LookupError):
-            pp_response = (
-                json.dumps(json.loads(response.content), indent=2)
-                if "application/json" in response.headers["Content-Type"]
-                else response.content
-            )
-            logging.error(
-                f"Can not parse JSON response from Spark REST API for app id={app_id}. "
-                f"Response was:\n{pp_response}"
-            )
+            log_response_error("$.jobId, $.status", response)
             raise
 
     def check_yarn_app_status(self, app_id):
@@ -254,19 +264,9 @@ class LivyBatchOperator(BaseOperator):
             endpoint
         )
         try:
-            app = json.loads(response.content)
-            app = app["app"]
-            status = app["finalStatus"]
+            status = json.loads(response.content)["app"]["finalStatus"]
         except (JSONDecodeError, LookupError):
-            pp_response = (
-                json.dumps(json.loads(response.content), indent=2)
-                if "application/json" in response.headers["Content-Type"]
-                else response.content
-            )
-            logging.error(
-                f"Can not parse JSON response from YARN RM REST API for app id={app_id}. "
-                f"Response was:\n{pp_response}"
-            )
+            log_response_error("$.app.finalStatus", response)
             raise
         expected_status = "SUCCEEDED"
         if status != expected_status:
@@ -283,12 +283,17 @@ class LivyBatchOperator(BaseOperator):
         line_to = LOG_PAGE_LINES
         while True:
             prepd_endpoint = endpoint + f"{line_from}&size={line_to}"
-            response = json.loads(hook.run(prepd_endpoint).content)
-            logs = response["log"]
-            for log in logs:
-                logging.info(log.replace("\\n", "\n"))
-            actual_line_from = response["from"]
-            total_lines = response["total"]
+            response = hook.run(prepd_endpoint)
+            try:
+                log_page = json.loads(response.content)
+                logs = log_page["log"]
+                for log in logs:
+                    logging.info(log.replace("\\n", "\n"))
+                actual_line_from = log_page["from"]
+                total_lines = log_page["total"]
+            except (JSONDecodeError, LookupError):
+                log_response_error("$.log, $.from, $.total", response)
+                raise
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(

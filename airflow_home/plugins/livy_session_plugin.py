@@ -1,5 +1,6 @@
 import json
 import logging
+from json import JSONDecodeError
 from typing import List
 
 from airflow.exceptions import AirflowException
@@ -12,6 +13,21 @@ from airflow.utils.decorators import apply_defaults
 ENDPOINT = "sessions"
 ALLOWED_LANGUAGES = ["spark", "pyspark", "sparkr", "sql"]
 LOG_PAGE_LINES = 100
+
+
+def log_response_error(lookup_path, response, session_id=None, statement_id=None):
+    msg = "Can not parse JSON response."
+    if session_id is not None:
+        msg += f" Session id={session_id}."
+    if statement_id is not None:
+        msg += f" Statement id={statement_id}."
+    pp_response = (
+        json.dumps(json.loads(response.content), indent=2)
+        if "application/json" in response.headers["Content-Type"]
+        else response.content
+    )
+    msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
+    logging.error(msg)
 
 
 class LivySessionCreationSensor(BaseSensorOperator):
@@ -39,9 +55,11 @@ class LivySessionCreationSensor(BaseSensorOperator):
         logging.info(f"Getting session {self.session_id} status...")
         endpoint = f"{ENDPOINT}/{self.session_id}/state"
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
-        session = json.loads(response.content)
-        state = session["state"]
-
+        try:
+            state = json.loads(response.content)["state"]
+        except (JSONDecodeError, LookupError):
+            log_response_error("$.state", response, self.session_id)
+            raise
         if state == "starting":
             logging.info(f"Session {self.session_id} is starting...")
             return False
@@ -81,9 +99,12 @@ class LivyStatementSensor(BaseSensorOperator):
         )
         endpoint = f"{ENDPOINT}/{self.session_id}/statements/{self.statement_id}"
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
-        statement = json.loads(response.content)
-        state = statement["state"]
-
+        try:
+            statement = json.loads(response.content)
+            state = statement["state"]
+        except (JSONDecodeError, LookupError):
+            log_response_error("$.state", response, self.session_id, self.statement_id)
+            raise
         if state in ["waiting", "running"]:
             logging.info(
                 f"Statement {self.statement_id} in session {self.session_id} "
@@ -91,12 +112,18 @@ class LivyStatementSensor(BaseSensorOperator):
             )
             return False
         if state == "available":
-            output = statement["output"]
-            status = output["status"]
+            try:
+                output = statement["output"]
+                status = output["status"]
+            except (LookupError):
+                log_response_error(
+                    "$.output.status", response, self.session_id, self.statement_id
+                )
+                raise
             pp_output = "\n".join(json.dumps(output, indent=2).split("\\n"))
             logging.info(
                 f"Statement {self.statement_id} in session {self.session_id} "
-                f"finished:\n{pp_output}"
+                f"finished. Output:\n{pp_output}"
             )
             if status != "ok":
                 raise AirflowException(
@@ -105,8 +132,8 @@ class LivyStatementSensor(BaseSensorOperator):
                 )
             return True
         raise AirflowException(
-            f"Statement {self.statement_id} in session {self.session_id} failed due to "
-            f"unknown state: '{state}'. Response was:\n{json.dumps(statement, indent=2)}"
+            f"Statement {self.statement_id} in session {self.session_id} failed "
+            f"due to an unknown state: '{state}'."
         )
 
 
@@ -241,13 +268,13 @@ class LivySessionOperator(BaseOperator):
                 f"All {len(self.statements)} statements in session {session_id} "
                 f"completed successfully!"
             )
-        except AirflowException:
-            if session_id:
+        except Exception as ex:
+            if session_id is not None:
                 self.spill_session_logs(session_id)
                 self.spill_logs = False
-            raise
+            raise AirflowException(ex)
         finally:
-            if session_id:
+            if session_id is not None:
                 if self.spill_logs:
                     self.spill_session_logs(session_id)
                 self.close_session(session_id)
@@ -272,7 +299,6 @@ class LivySessionOperator(BaseOperator):
             "heartbeatTimeoutInSecond": self.heartbeat_timeout,
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
-
         logging.info(
             f"Creating a session in Livy... "
             f"Payload:\n{json.dumps(payload, indent=2)}"
@@ -280,19 +306,26 @@ class LivySessionOperator(BaseOperator):
         response = HttpHook(http_conn_id=self.http_conn_id).run(
             ENDPOINT, json.dumps(payload), headers,
         )
-        session = json.loads(response.content)
-        return session["id"]
+        try:
+            return json.loads(response.content)["id"]
+        except (JSONDecodeError, LookupError):
+            log_response_error("$.id", response)
+            raise
 
     def submit_statement(self, session_id, statement: Statement):
         headers = {"X-Requested-By": "airflow", "Content-Type": "application/json"}
-        payload = {"kind": statement.kind, "code": statement.code}
+        payload = {"code": statement.code}
+        if statement.kind:
+            payload["kind"] = statement.kind
         endpoint = f"{ENDPOINT}/{session_id}/statements"
         response = HttpHook(http_conn_id=self.http_conn_id).run(
             endpoint, json.dumps(payload), headers
         )
-        statement = json.loads(response.content)
-        statement_id = statement["id"]
-        return statement_id
+        try:
+            return json.loads(response.content)["id"]
+        except (JSONDecodeError, LookupError):
+            log_response_error("$.id", response, session_id)
+            raise
 
     def spill_session_logs(self, session_id):
         dashes = 50
@@ -303,12 +336,17 @@ class LivySessionOperator(BaseOperator):
         line_to = LOG_PAGE_LINES
         while True:
             prepd_endpoint = endpoint + f"{line_from}&size={line_to}"
-            response = json.loads(hook.run(prepd_endpoint).content)
-            logs = response["log"]
-            for log in logs:
-                logging.info(log.replace("\\n", "\n"))
-            actual_line_from = response["from"]
-            total_lines = response["total"]
+            response = hook.run(prepd_endpoint)
+            try:
+                log_page = json.loads(response.content)
+                logs = log_page["log"]
+                for log in logs:
+                    logging.info(log.replace("\\n", "\n"))
+                actual_line_from = log_page["from"]
+                total_lines = log_page["total"]
+            except (JSONDecodeError, LookupError):
+                log_response_error("$.log, $.from, $.total", response, session_id)
+                raise
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(

@@ -45,6 +45,12 @@ init: venv
 	--conn_host localhost --conn_schema http --conn_port 18080 ; \
 	airflow connections -a --conn_id yarn --conn_type HTTP \
 	--conn_host localhost --conn_schema http --conn_port 8088 ; \
+	airflow unpause 01_session_example ; \
+	airflow unpause 02_session_example_load_from_file ; \
+	airflow unpause 03_batch_example ; \
+	airflow unpause 04_batch_example_failing ; \
+	airflow unpause 05_batch_example_verify_in_spark ; \
+	airflow unpause 06_batch_example_verify_in_yarn ; \
 	deactivate ;
 
 up:

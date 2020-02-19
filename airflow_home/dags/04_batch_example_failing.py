@@ -17,7 +17,8 @@ except ImportError:
 
 dag = DAG(
     "04_batch_example_failing",
-    description="Running Spark jobs via Livy Batches, intentionally failing the job",
+    description="Run Spark job via Livy Batches, verify status in Livy as well. "
+    "Intentionally failing the job",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,
@@ -40,9 +41,12 @@ t1 = LivyBatchOperator(
         "Address1 STRING, Address2 STRING",
         "-file2_join_column=SSN",
         "-output_header=true",
-        "-output_columns=file1.Inexistent",
+        # The job is supposed to show as "Failed" b/c of that inexistent column
+        "-output_columns=file1.`Last name`, file1.Inexistent",
     ],
-    conf={"spark.submit.deployMode": "cluster"},
+    # This will work if deploy mode is not specified in livy.conf already.
+    # It's 'client' by default
+    conf={"spark.submit.deployMode": "client"},
     task_id="livy_batch_example_failing",
     dag=dag,
 )

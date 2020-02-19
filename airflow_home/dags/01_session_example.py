@@ -1,3 +1,10 @@
+"""
+Livy can run Spark code in two modes: sessions and batches.
+Sessions are good for short, ad-hoc code snippets.
+There's no way to pass parameters into statements natively (i.e. via REST API)
+so we're making our code templated and render it with Jinja.
+params dict contains variables to plug into code template.
+"""
 from datetime import datetime
 
 from airflow import DAG
@@ -11,12 +18,11 @@ except ImportError:
 
 dag = DAG(
     "01_session_example",
-    description="Running Spark jobs via Livy Sessions",
+    description="Run Spark job via Livy Sessions",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,
 )
-
 
 # See ready statements with parameter values substituted
 # in the "Rendered template" tab of a running task.
@@ -54,6 +60,7 @@ sql_code = """
 SELECT CONCAT('{{ params.your_string }}', ' in task instance ', '{{ run_id }}')
 """
 
+# See the results of each statement's executions under "Logs" tab of the task.
 t1 = LivySessionOperator(
     name="livy_session_example_{{ run_id }}",
     statements=[

@@ -1,8 +1,8 @@
 """
 Sessions are okay unless you have to write more than one-liners.
-That's where things get ugly - they can't be included as string literals due to
-their size, so we store them in a file. Jinja templates make it hard/impossible
-to run, debug and test it.
+That's where things get ugly - they can't be declared in code as string literals due to
+their size, so we store them in a file. Jinja template placeholders in the code
+make it real hard to run, debug and test.
 """
 import logging
 import os
@@ -35,7 +35,7 @@ def read_code_from_file(task_instance, **context):
 
 dag = DAG(
     "02_session_example_load_from_file",
-    description="Running Spark jobs via Livy Sessions, loading statement from file",
+    description="Run Spark job via Livy Sessions, load statement from file",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,
@@ -54,17 +54,16 @@ get_session_code = PythonOperator(
         "file1_escape": "\\\\",
         "file1_join_column": "SSN",
         "file2_path": "file:///data/ssn-address.tsv",
-        "file2_sep": "\\t",
         "file2_infer_schema": "false",
         "file2_schema": "`Last name` STRING, `First name` STRING, SSN STRING, "
         "Address1 STRING, Address2 STRING",
         "file2_header": "false",
-        "file2_quote": '\\"',
-        "file2_escape": "\\\\",
         "file2_join_column": "SSN",
         "output_columns": "file1.`Last name`, file1.`First name`, file1.SSN, "
         "file2.Address1, file2.Address2",
-        "output_path": "file:///data/output/livy_session_example_load_from_file",
+        # uncomment
+        # "output_path": "file:///data/output/session_example_load_from_file/{{ run_id|replace(':', '-') }}"
+        # to save result to a file
         "output_sep": "\\t",
         "output_header": "true",
         "output_mode": "overwrite",
@@ -72,13 +71,19 @@ get_session_code = PythonOperator(
     dag=dag,
 )
 
+# In first example, we specified code language per statement.
+# Instead, you can specify a session-wide language,
+# and then override it on per-statement basis.
 run_session = LivySessionOperator(
     name="livy_session_example_load_from_file_{{ run_id }}",
+    kind="pyspark",
     statements=[
         LivySessionOperator.Statement(
-            code="{{ task_instance.xcom_pull(key='join_code', task_ids='get_session_code') }}",
-            kind="pyspark",
-        )
+            code="{{ task_instance.xcom_pull(key='join_code', task_ids='get_session_code') }}"
+        ),
+        LivySessionOperator.Statement(
+            kind="sql", code="SELECT 'Hello world! I am a SQL code in Pyspark session!'"
+        ),
     ],
     task_id="livy_session_example_load_from_file",
     dag=dag,

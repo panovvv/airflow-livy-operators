@@ -11,8 +11,7 @@ except ImportError:
 
 dag = DAG(
     "05_batch_example_verify_in_spark",
-    description="Running Spark job via Livy Batches "
-                "+ verifying status in Spark REST API",
+    description="Run Spark job via Livy Batches, verify status in Spark REST API",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,
@@ -35,9 +34,8 @@ t1 = LivyBatchOperator(
         "Address1 STRING, Address2 STRING",
         "-file2_join_column=SSN",
         "-output_header=true",
-        "-output_columns=file1.`Last name`, file1.`First name`, file1.SSN, "
-        "file2.Address1, file2.Address2",
-        ## TODO MAKE IT FAIL
+        # The job is supposed to show as "Failed" b/c of that inexistent column
+        "-output_columns=file1.`Last name`, file1.Inexistent",
     ],
     verify_in="spark",
     task_id="livy_batch_example_verify_in_spark",
