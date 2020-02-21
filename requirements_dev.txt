@@ -1,0 +1,15 @@
+# PySpark stubs: better coding experience for PySpark
+pyspark-stubs==2.4.0.post7
+
+# Unit tests
+pytest==5.3.5
+
+# Code formatting
+black==19.10b0
+
+# Pre-commit hook to run Black on each commit
+pre-commit==2.1.0
+
+# Code linting
+pylint==2.4.4
+pylint-airflow==0.1.0a1

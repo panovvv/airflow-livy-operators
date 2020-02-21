@@ -72,20 +72,20 @@ up: init copy-batches
 	airflow webserver ; \
 	deactivate ;
 
-init-tests: init
+down:
+	pkill -f airflow | true
+
+init-dev:
 	@if [ ! -e "./venv/bin/pytest" ] ; then \
 		. ./venv/bin/activate ; \
 		pip3 install --upgrade pip ; \
-		pip3 install -r requirements_tests.txt; \
+		pip3 install -r requirements_dev.txt; \
 		deactivate ; \
 	else \
 		echo "Tests had already been initialized." ; \
 	fi
 
-tests: init-tests
+tests: init-dev
 	. ./venv/bin/activate ; \
-	python3 -m unittest discover ./tests ; \
+	pytest ./tests ; \
 	deactivate ;
-
-down:
-	pkill -f airflow | true
