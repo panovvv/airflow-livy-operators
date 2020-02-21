@@ -6,7 +6,6 @@ from typing import List
 from airflow.exceptions import AirflowException
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator
-from airflow.plugins_manager import AirflowPlugin
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 
@@ -360,9 +359,3 @@ class LivySessionOperator(BaseOperator):
         session_endpoint = f"{ENDPOINT}/{session_id}"
         HttpHook(method="DELETE", http_conn_id=self.http_conn_id).run(session_endpoint)
         logging.info(f"Session {session_id} has been closed")
-
-
-class LivySessionPlugin(AirflowPlugin):
-    name = "Livy session plugin"
-    operators = [LivySessionOperator]
-    sensors = [LivySessionCreationSensor, LivyStatementSensor]

@@ -13,7 +13,6 @@ from json import JSONDecodeError
 from airflow.exceptions import AirflowException
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator
-from airflow.plugins_manager import AirflowPlugin
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 
@@ -309,9 +308,3 @@ class LivyBatchOperator(BaseOperator):
             batch_endpoint
         )
         logging.info(f"Batch {batch_id} has been closed")
-
-
-class LivyBatchPlugin(AirflowPlugin):
-    name = "Livy batch plugin"
-    operators = [LivyBatchOperator]
-    sensors = [LivyBatchSensor]
