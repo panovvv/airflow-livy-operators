@@ -61,7 +61,7 @@ SELECT CONCAT('{{ params.your_string }}', ' in task instance ', '{{ run_id }}')
 """
 
 # See the results of each statement's executions under "Logs" tab of the task.
-t1 = LivySessionOperator(
+op = LivySessionOperator(
     name="livy_session_example_{{ run_id }}",
     statements=[
         LivySessionOperator.Statement(code=scala_code, kind="spark"),

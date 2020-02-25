@@ -17,7 +17,7 @@ dag = DAG(
     catchup=False,
 )
 
-t1 = LivyBatchOperator(
+op = LivyBatchOperator(
     name="batch_example_verify_in_yarn_{{ run_id }}",
     file="file:///data/batches/join_2_files.py",
     py_files=["file:///data/batches/join_2_files.py"],

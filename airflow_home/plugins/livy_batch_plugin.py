@@ -9,8 +9,9 @@ https://spark.apache.org/docs/latest/monitoring.html#rest-api
 import json
 import logging
 from json import JSONDecodeError
+from numbers import Number
 
-from airflow.exceptions import AirflowException
+from airflow.exceptions import AirflowException, AirflowBadRequest
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
@@ -20,6 +21,15 @@ LIVY_ENDPOINT = "batches"
 SPARK_ENDPOINT = "api/v1/applications"
 YARN_ENDPOINT = "ws/v1/cluster/apps"
 VERIFICATION_METHODS = ["spark", "yarn"]
+VALID_BATCH_STATES = [
+    "not_started",
+    "starting",
+    "recovering",
+    "idle",
+    "running",
+    "busy",
+    "shutting_down",
+]
 LOG_PAGE_LINES = 100
 
 
@@ -29,7 +39,7 @@ def log_response_error(lookup_path, response, batch_id=None):
         msg += f" Batch id={batch_id}."
     pp_response = (
         json.dumps(json.loads(response.content), indent=2)
-        if "application/json" in response.headers["Content-Type"]
+        if "application/json" in response.headers.get("Content-Type", "")
         else response.content
     )
     msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
@@ -40,13 +50,23 @@ class LivyBatchSensor(BaseSensorOperator):
     def __init__(
         self,
         batch_id,
-        poke_interval,
-        timeout,
         task_id,
+        poke_interval=20,
+        timeout=10 * 60,
         http_conn_id="livy",
         soft_fail=False,
         mode="poke",
     ):
+        if poke_interval < 1:
+            raise AirflowException(
+                f"Poke interval {poke_interval} sec. is too small, "
+                f"this will result in too frequent API calls"
+            )
+        if poke_interval > timeout:
+            raise AirflowException(
+                f"Poke interval {poke_interval} sec. is greater "
+                f"than the timeout value. Timeout won't work."
+            )
         super().__init__(
             poke_interval=poke_interval,
             timeout=timeout,
@@ -63,10 +83,10 @@ class LivyBatchSensor(BaseSensorOperator):
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
         try:
             state = json.loads(response.content)["state"]
-        except (JSONDecodeError, LookupError):
+        except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.state", response, self.batch_id)
-            raise
-        if state in ["starting", "running"]:
+            raise AirflowBadRequest(ex)
+        if state in VALID_BATCH_STATES:
             logging.info(
                 f"Batch {self.batch_id} has not finished yet (state is '{state}')"
             )
@@ -214,10 +234,16 @@ class LivyBatchOperator(BaseOperator):
             LIVY_ENDPOINT, json.dumps(payload), headers
         )
         try:
-            return json.loads(response.content)["id"]
-        except (JSONDecodeError, LookupError):
+            batch_id = json.loads(response.content)["id"]
+            if not isinstance(batch_id, Number):
+                raise AirflowException(
+                    "ID of the created batch is not a number. "
+                    "Are you sure we're calling Livy?"
+                )
+            return batch_id
+        except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.id", response)
-            raise
+            raise AirflowBadRequest(ex)
 
     def get_spark_app_id(self, batch_id):
         logging.info(f"Getting Spark app id from Livy API for batch {batch_id}...")
@@ -227,9 +253,9 @@ class LivyBatchOperator(BaseOperator):
         )
         try:
             return json.loads(response.content)["appId"]
-        except (JSONDecodeError, LookupError, AirflowException):
+        except (JSONDecodeError, LookupError, AirflowException) as ex:
             log_response_error("$.appId", response, batch_id)
-            raise
+            raise AirflowBadRequest(ex)
 
     def check_spark_app_status(self, app_id):
         logging.info(f"Getting app status (id={app_id}) from Spark REST API...")
@@ -252,9 +278,9 @@ class LivyBatchOperator(BaseOperator):
                         f"Job id '{job_id}' associated with application '{app_id}' "
                         f"is '{job_status}', expected status is '{expected_status}'"
                     )
-        except (JSONDecodeError, LookupError):
+        except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.jobId, $.status", response)
-            raise
+            raise AirflowBadRequest(ex)
 
     def check_yarn_app_status(self, app_id):
         logging.info(f"Getting app status (id={app_id}) from YARN RM REST API...")
@@ -264,9 +290,9 @@ class LivyBatchOperator(BaseOperator):
         )
         try:
             status = json.loads(response.content)["app"]["finalStatus"]
-        except (JSONDecodeError, LookupError):
+        except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.app.finalStatus", response)
-            raise
+            raise AirflowBadRequest(ex)
         expected_status = "SUCCEEDED"
         if status != expected_status:
             raise AirflowException(
@@ -290,9 +316,9 @@ class LivyBatchOperator(BaseOperator):
                     logging.info(log.replace("\\n", "\n"))
                 actual_line_from = log_page["from"]
                 total_lines = log_page["total"]
-            except (JSONDecodeError, LookupError):
+            except (JSONDecodeError, LookupError) as ex:
                 log_response_error("$.log, $.from, $.total", response)
-                raise
+                raise AirflowBadRequest(ex)
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(

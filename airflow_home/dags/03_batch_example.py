@@ -25,7 +25,7 @@ dag = DAG(
 
 # name and arguments parameters can still be templated (see below),
 # but batch code is template-free (see /batches/join_2_files.py)
-t1 = LivyBatchOperator(
+op = LivyBatchOperator(
     name="batch_example_{{ run_id }}",
     file="file:///data/batches/join_2_files.py",
     py_files=["file:///data/batches/join_2_files.py"],

@@ -23,3 +23,11 @@ derby.log
 # Ignore all Idea project files but Run profiles
 .idea/*
 !.idea/runConfigurations/
+
+# Python packages
+build/
+dist/
+*.egg-info/
+
+# Tox environment
+.tox/
