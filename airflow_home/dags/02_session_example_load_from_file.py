@@ -4,6 +4,7 @@ That's where things get ugly - they can't be declared in code as string literals
 their size, so we store them in a file. Jinja template placeholders in the code
 make it real hard to run, debug and test.
 """
+
 import logging
 import os
 from datetime import datetime
@@ -62,7 +63,8 @@ get_session_code = PythonOperator(
         "output_columns": "file1.`Last name`, file1.`First name`, file1.SSN, "
         "file2.Address1, file2.Address2",
         # uncomment
-        # "output_path": "file:///data/output/session_example_load_from_file/{{ run_id|replace(':', '-') }}"
+        # "output_path": "file:///data/output/session_example_load_from_file/"
+        #                "{{ run_id|replace(':', '-') }}"
         # to save result to a file
         "output_sep": "\\t",
         "output_header": "true",
@@ -74,13 +76,12 @@ get_session_code = PythonOperator(
 # In first example, we specified code language per statement.
 # Instead, you can specify a session-wide language,
 # and then override it on per-statement basis.
+code = "{{ task_instance.xcom_pull(key='join_code', task_ids='get_session_code') }}"
 run_session = LivySessionOperator(
     name="livy_session_example_load_from_file_{{ run_id }}",
     kind="pyspark",
     statements=[
-        LivySessionOperator.Statement(
-            code="{{ task_instance.xcom_pull(key='join_code', task_ids='get_session_code') }}"
-        ),
+        LivySessionOperator.Statement(code=code),
         LivySessionOperator.Statement(
             kind="sql", code="SELECT 'Hello world! I am a SQL code in Pyspark session!'"
         ),

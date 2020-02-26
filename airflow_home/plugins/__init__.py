@@ -1,13 +1,10 @@
 from airflow.plugins_manager import AirflowPlugin
 
-from .livy_batch_plugin import (
-    LivyBatchSensor,
-    LivyBatchOperator,
-)
+from .livy_batch_plugin import LivyBatchOperator, LivyBatchSensor
 from .livy_session_plugin import (
     LivySessionCreationSensor,
-    LivyStatementSensor,
     LivySessionOperator,
+    LivyStatementSensor,
 )
 
 

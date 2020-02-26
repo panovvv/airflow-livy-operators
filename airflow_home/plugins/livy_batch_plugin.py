@@ -1,7 +1,8 @@
 """
 Makes use of both Livy Batch mode and Spark REST API.
 Spark REST API is only invoked to get an actual status of application,
-as in YARN mode (TODO WHEN???) it always shows as "succeeded" even when underlying job fails.
+as in YARN mode
+(TODO WHEN???) it always shows as "succeeded" even when underlying job fails.
 
 https://livy.incubator.apache.org/docs/latest/rest-api.html
 https://spark.apache.org/docs/latest/monitoring.html#rest-api
@@ -11,7 +12,7 @@ import logging
 from json import JSONDecodeError
 from numbers import Number
 
-from airflow.exceptions import AirflowException, AirflowBadRequest
+from airflow.exceptions import AirflowBadRequest, AirflowException
 from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator
 from airflow.sensors.base_sensor_operator import BaseSensorOperator
@@ -162,8 +163,9 @@ class LivyBatchOperator(BaseOperator):
 
     def execute(self, context):
         """
-        1. Submit a batch to Livy
-        2. Poll API until it's ready
+        Workflow:
+        1. Submit a batch to Livy.
+        2. Poll API until it's ready.
         3. If an additional verification method is specified, retrieve it and
         disregard  the batch job status from Livy.
         """
@@ -296,7 +298,7 @@ class LivyBatchOperator(BaseOperator):
         expected_status = "SUCCEEDED"
         if status != expected_status:
             raise AirflowException(
-                f"YARN app {app_id} is '{status}', expected status is '{expected_status}'"
+                f"YARN app {app_id} is '{status}', expected status: '{expected_status}'"
             )
 
     def spill_batch_logs(self, batch_id):

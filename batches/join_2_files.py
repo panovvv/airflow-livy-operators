@@ -1,4 +1,9 @@
-""" todo execute locally, doc """
+"""
+todo doc.
+
+doc
+"""
+
 import argparse
 import json
 
@@ -10,7 +15,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFo
 parser.add_argument(
     "file1_path",
     type=str,
-    help="Input file location. Available prefixes are: file:///, hdfs://, s3://",
+    help="Input file location. Available schemas are: file, hdfs, s3",
 )
 parser.add_argument(
     "-file1_sep",
@@ -64,7 +69,7 @@ parser.add_argument("-file2_join_column", type=str, required=True, help=SAME_DOC
 parser.add_argument(
     "-output_path",
     type=str,
-    help="Location to store result at. Available prefixes are: file:///, hdfs://, s3://",
+    help="Location to store result at. Available schemas are: file, hdfs, s3",
 )
 parser.add_argument("-output_sep", type=str, default="\t", help=SAME_DOC)
 parser.add_argument(
@@ -75,7 +80,8 @@ parser.add_argument(
     type=str,
     default="overwrite",
     help="Write mode for output file. "
-    "https://spark.apache.org/docs/latest/sql-data-sources-load-save-functions.html#save-modes",
+    "https://spark.apache.org/docs/latest/sql-data-sources-load-save-functions.html"
+    "#save-modes",
 )
 parser.add_argument(
     "-output_columns",

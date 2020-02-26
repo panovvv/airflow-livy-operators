@@ -6,13 +6,19 @@ tox==3.14.5
 
 # Unit tests
 pytest==5.3.5
+
+# Unit tests: mocking
 pytest-mock==2.0.0
+responses==0.10.11
+
+# Verification: show difference between expected and actual files
+deepdiff==4.2.0
 
 # Code formatting
 black==19.10b0
 
 # Pre-commit hook to run Black on each commit
-pre-commit==2.1.0
+pre-commit==2.1.1
 
 # Code linting
 pylint==2.4.4

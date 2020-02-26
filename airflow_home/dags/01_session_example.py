@@ -1,5 +1,6 @@
 """
 Livy can run Spark code in two modes: sessions and batches.
+
 Sessions are good for short, ad-hoc code snippets.
 There's no way to pass parameters into statements natively (i.e. via REST API)
 so we're making our code templated and render it with Jinja.

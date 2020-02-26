@@ -88,5 +88,5 @@ init-dev:
 
 tests: init-dev
 	. ./venv/bin/activate ; \
-	pytest ./tests/ ; \
+	pytest; \
 	deactivate ;

@@ -4,6 +4,7 @@ in local mode vs in YARN mode (job running in cluster mode).
 This DAG runs an intentionally failing Livy batch.
 TODO doc
 """
+
 from datetime import datetime
 
 from airflow import DAG

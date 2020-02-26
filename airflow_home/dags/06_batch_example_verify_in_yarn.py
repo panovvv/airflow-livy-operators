@@ -1,3 +1,8 @@
+"""
+TODO doc.
+bla
+"""
+
 from datetime import datetime
 
 from airflow import DAG
@@ -11,7 +16,8 @@ except ImportError:
 
 dag = DAG(
     "06_batch_example_verify_in_yarn",
-    description="Run Spark job via Livy Batches, verify status in YARN Resource Manager REST API",
+    description="Run Spark job via Livy Batches, verify status in "
+    "YARN Resource Manager REST API",
     schedule_interval=None,
     start_date=datetime(1970, 1, 1),
     catchup=False,

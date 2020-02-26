@@ -111,29 +111,32 @@ class LivyStatementSensor(BaseSensorOperator):
             )
             return False
         if state == "available":
-            try:
-                output = statement["output"]
-                status = output["status"]
-            except (LookupError):
-                log_response_error(
-                    "$.output.status", response, self.session_id, self.statement_id
-                )
-                raise
-            pp_output = "\n".join(json.dumps(output, indent=2).split("\\n"))
-            logging.info(
-                f"Statement {self.statement_id} in session {self.session_id} "
-                f"finished. Output:\n{pp_output}"
-            )
-            if status != "ok":
-                raise AirflowException(
-                    f"Statement {self.statement_id} in session {self.session_id} "
-                    f"failed with status '{status}'"
-                )
+            self.__check_status(statement, response)
             return True
         raise AirflowException(
             f"Statement {self.statement_id} in session {self.session_id} failed "
             f"due to an unknown state: '{state}'."
         )
+
+    def __check_status(self, statement, response):
+        try:
+            output = statement["output"]
+            status = output["status"]
+        except LookupError:
+            log_response_error(
+                "$.output.status", response, self.session_id, self.statement_id
+            )
+            raise
+        pp_output = "\n".join(json.dumps(output, indent=2).split("\\n"))
+        logging.info(
+            f"Statement {self.statement_id} in session {self.session_id} "
+            f"finished. Output:\n{pp_output}"
+        )
+        if status != "ok":
+            raise AirflowException(
+                f"Statement {self.statement_id} in session {self.session_id} "
+                f"failed with status '{status}'"
+            )
 
 
 class LivySessionOperator(BaseOperator):
@@ -226,6 +229,7 @@ class LivySessionOperator(BaseOperator):
 
     def execute(self, context):
         """
+        Workflow:
         1. Create a session in Livy
         2. Poll API until it's ready to execute statements
         3. Submit provided statements to the session, one by one
@@ -349,7 +353,8 @@ class LivySessionOperator(BaseOperator):
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(
-                    f"{'-' * dashes}End of full log for session {session_id}{'-' * dashes}"
+                    f"{'-' * dashes}End of full log for session {session_id}"
+                    f"{'-' * dashes}"
                 )
                 break
             line_from = actual_line_from + actual_lines

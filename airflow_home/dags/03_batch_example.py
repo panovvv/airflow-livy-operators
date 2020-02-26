@@ -1,9 +1,11 @@
 """
 Solution to the problem of running "serious" code in sessions is Livy Batches.
+
 Batches work the same way running ordinary code works:
 a) you can pass arguments into your code (no need for templates anymore).
 b) you can run and debug batch files even locally in IDE!
 """
+
 from datetime import datetime
 
 from airflow import DAG
@@ -44,7 +46,8 @@ op = LivyBatchOperator(
         "Address1 STRING, Address2 STRING",
         "-file2_join_column=SSN",
         # uncomment
-        # "-output_path=file:///data/output/livy_batch_example/{{ run_id|replace(':', '-') }}",
+        # "-output_path=file:///data/output/livy_batch_example/"
+        # "{{ run_id|replace(':', '-') }}",
         # to save result to a file
         "-output_header=true",
         "-output_columns=file1.`Last name`, file1.`First name`, file1.SSN, "
