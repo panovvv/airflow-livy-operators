@@ -1,0 +1,12 @@
+language: python
+os: linux
+install:
+  - pip install tox
+script:
+  - tox
+git:
+  depth: false
+branches:
+  only:
+  - "master"
+cache: pip
