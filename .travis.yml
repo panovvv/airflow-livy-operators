@@ -1,12 +1,16 @@
-language: python
-os: linux
-install:
-  - pip install tox
-script:
-  - tox
+# Speed up the build
+sudo: false
 git:
   depth: false
 branches:
   only:
   - "master"
 cache: pip
+
+# How to build
+language: python
+os: linux
+install:
+  - pip install tox==3.14.5
+script:
+  - tox

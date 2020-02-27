@@ -2,7 +2,8 @@ TODO UPDATE README
 
 # Airflow Livy Plugins
 
-[![Docker Build](https://img.shields.io/travis/com/panovvv/airflow-livy-plugins)](https://travis-ci.org/panovvv/airflow-livy-plugins)
+[![Build Status](https://travis-ci.org/panovvv/airflow-livy-plugins.svg?branch=master)](https://travis-ci.org/panovvv/airflow-livy-plugins)
+[![Code coverage](https://codecov.io/gh/panovvv/airflow-livy-plugins/branch/master/graph/badge.svg)](https://codecov.io/gh/panovvv/airflow-livy-plugins)
 
 Plugins for Airflow to run Spark jobs via Livy: session mode, batch mode and hybrid (batch + Spark REST API)
 
@@ -128,3 +129,9 @@ Spark WebUI: null
 
 
 linting: flake8
+
+formatting:
+black airflow_home/ batches/ tests/ && isort
+
+COverage
+pytest --cov=airflow_home.plugins ./tests

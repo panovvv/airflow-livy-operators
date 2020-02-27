@@ -31,3 +31,7 @@ dist/
 
 # Tox environment
 .tox/
+
+# Code coverage info (pytest)
+.coverage
+coverage.xml
