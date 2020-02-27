@@ -88,5 +88,10 @@ init-dev:
 
 tests: init-dev
 	. ./venv/bin/activate ; \
-	pytest; \
+	pytest ; \
+	deactivate ;
+
+codecov: init-dev
+	. ./venv/bin/activate ; \
+	pytest --cov=airflow_home.plugins ; \
 	deactivate ;

@@ -1,9 +1,8 @@
 from airflow import AirflowException
 from airflow.exceptions import AirflowBadRequest, AirflowSensorTimeout
 from airflow.hooks.http_hook import HttpHook
-from pytest import mark, raises
-
 from airflow_home.plugins import LivyBatchSensor
+from pytest import mark, raises
 from tests.helpers import mock_http_response
 
 
