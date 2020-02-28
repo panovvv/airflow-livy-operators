@@ -8,6 +8,9 @@ from requests import Response
 HOST = "host"
 PORT = 1234
 URI = f"http://{HOST}:{PORT}"
+BATCH_ID = 99
+LOG_PAGE_SIZE = 100
+APP_ID = "mock_app_id"
 
 
 def mock_http_response(status_code, content=None, reason=None):
@@ -27,22 +30,55 @@ def mock_http_response(status_code, content=None, reason=None):
 
 
 def mock_batch_responses(
-    mocker, batch_id, get_code, get_resp,
+    mocker,
+    mock_create=True,
+    mock_status=True,
+    mock_spark=False,
+    mock_yarn=False,
+    mock_delete=True,
+    log_pages=1,
 ):
-    # Makes no sense to fail batch submission - it's all tested in 01_batch_op_submit.py
-    responses.add(responses.POST, f"{URI}/batches", status=201, json={"id": batch_id})
-    responses.add(
-        responses.GET, f"{URI}/batches/{batch_id}", status=get_code, json=get_resp
-    )
-    responses.add(
-        responses.GET,
-        f"{URI}/batches/{batch_id}/log?from=0&size=100",
-        status=200,
-        json={"id": batch_id, "from": 0, "total": 2, "log": ["line 1", "line 2"]},
-    )
-    responses.add(
-        responses.DELETE, f"{URI}/batches/{batch_id}", status=200,
-    )
+    if mock_create:
+        responses.add(
+            responses.POST, f"{URI}/batches", status=201, json={"id": BATCH_ID}
+        )
+    if mock_status:
+        responses.add(
+            responses.GET,
+            f"{URI}/batches/{BATCH_ID}",
+            status=200,
+            json={"state": "success", "appId": APP_ID},
+        )
+    if mock_spark:
+        responses.add(
+            responses.GET,
+            f"{URI}/api/v1/applications/{APP_ID}/jobs",
+            status=200,
+            json=[
+                {"jobId": 1, "status": "SUCCEEDED"},
+                {"jobId": 2, "status": "SUCCEEDED"},
+            ],
+        )
+    if log_pages:
+        for page in range(log_pages):
+            line_from = page * LOG_PAGE_SIZE
+            line_to = (1 + page) * LOG_PAGE_SIZE
+            responses.add(
+                responses.GET,
+                f"{URI}/batches/{BATCH_ID}/log?from={line_from}&size={line_to}",
+                status=200,
+                json={
+                    "id": BATCH_ID,
+                    "from": line_from,
+                    "total": line_to,
+                    "log": [f"line {n}" for n in range(line_from, line_to)],
+                },
+            )
+    if mock_delete:
+        responses.add(
+            responses.DELETE, f"{URI}/batches/{BATCH_ID}", status=200,
+        )
+
     mocker.patch.object(
         BaseHook,
         "_get_connections_from_db",

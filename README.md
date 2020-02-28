@@ -84,9 +84,6 @@ Airflow and PySpark code.
 
 http://michal.karzynski.pl/blog/2017/03/19/developing-workflows-with-apache-airflow/
 
-```shell script
-pylint --rcfile=.pylintrc --load-plugins=pylint_airflow airflow_code/
-```
 
 
 https://github.com/panovvv/bigdata-docker-compose
@@ -128,10 +125,27 @@ Spark Application Id: null
 Spark WebUI: null
 
 
-linting: flake8
+linting: 
+
+```bash
+flake8
+pylint --rcfile=.pylintrc --load-plugins=pylint_airflow airflow_home/
+```
+
 
 formatting:
-black airflow_home/ batches/ tests/ && isort
+black airflow_home/ batches/ tests/ && isort -rc airflow_home/ batches/ tests/
 
 COverage
-pytest --cov=airflow_home.plugins ./tests
+pytest --cov=airflow_home.plugins
+
+tests
+pytest
+
+dev env and running the examples:
+./airflow.sh up
+./airflow.sh dev
+./airflow.sh test - run tests with coverage
+
+# See usage
+./airflow.sh

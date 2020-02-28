@@ -1,7 +1,11 @@
+# PySpark to run and debug batch jobs locally
+pyspark==2.4.5
+
 # PySpark stubs: better coding experience for PySpark
 pyspark-stubs==2.4.0.post7
 
-# Unified testing
+# Unified testing: run tests, linting and code coverage report with one command.
+# CI uses that to check the build.
 tox==3.14.5
 
 # Unit tests
@@ -22,7 +26,7 @@ codecov==2.0.16
 black==19.10b0
 isort==4.3.21
 
-# Pre-commit hook to run Black on each commit
+# Pre-commit hook to check (and reformat if needed) code on each commit
 pre-commit==2.1.1
 
 # Code linting

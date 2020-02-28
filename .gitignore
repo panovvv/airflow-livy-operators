@@ -35,3 +35,4 @@ dist/
 # Code coverage info (pytest)
 .coverage
 coverage.xml
+htmlcov/

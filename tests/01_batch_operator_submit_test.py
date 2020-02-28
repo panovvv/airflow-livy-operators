@@ -1,14 +1,14 @@
 import json
 from json import JSONDecodeError
+from typing import Iterable, Mapping
 
 from airflow import AirflowException
 from airflow.exceptions import AirflowBadRequest
 from airflow.hooks.http_hook import HttpHook
+from airflow_home.plugins import LivyBatchOperator
 from deepdiff import DeepDiff
 from pytest import mark, raises
 from requests import Response
-
-from airflow_home.plugins import LivyBatchOperator
 from tests.helpers import mock_http_response
 
 
@@ -45,6 +45,17 @@ def test_submit_batch_get_id(dag, mocker):
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     val = op.submit_batch()
     assert val == 123
+
+
+def find_json_in_args(args_list: Iterable, kwargs_map: Mapping):
+    if kwargs_map.get("data"):
+        return json.loads(kwargs_map["data"])
+    else:
+        for arg in args_list:
+            try:
+                return json.loads(arg)
+            except (JSONDecodeError, TypeError):
+                pass
 
 
 def test_submit_batch_params(dag, mocker):
@@ -119,15 +130,7 @@ def test_submit_batch_params(dag, mocker):
     }"""
     )
     actual_args, actual_kwargs = patched_hook._call_matcher(patched_hook.call_args)
-    actual_json = None
-    if actual_kwargs.get("data"):
-        actual_json = json.loads(actual_kwargs["data"])
-    else:
-        for arg in actual_args:
-            try:
-                actual_json = json.loads(arg)
-            except (JSONDecodeError, TypeError):
-                pass
+    actual_json = find_json_in_args(actual_args, actual_kwargs)
     if actual_json is None:
         raise AssertionError(
             f"Can not find JSON in HttpHook args.\n"

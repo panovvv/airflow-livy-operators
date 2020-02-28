@@ -2,12 +2,9 @@ import responses
 from airflow import AirflowException
 from airflow.hooks.base_hook import BaseHook
 from airflow.models import Connection
-from pytest import mark, raises
-
 from airflow_home.plugins import LivyBatchOperator
+from pytest import mark, raises
 from tests.helpers import mock_batch_responses
-
-BATCH_ID = 99
 
 
 @responses.activate
@@ -16,12 +13,10 @@ def test_run_batch_successfully(dag, mocker):
         task_id="test_run_batch_successfully", spill_logs=False, dag=dag
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
-    mock_batch_responses(
-        mocker, batch_id=BATCH_ID, get_code=200, get_resp={"state": "success"},
-    )
+    mock_batch_responses(mocker)
     op.execute({})
 
-    # We set spill_logs to False and batch completed successfully, so we don't expect logs.
+    # spill_logs is False and batch completed successfully, so we don't expect logs.
     spill_logs_spy.assert_not_called()
     op.spill_logs = True
     op.execute({})
@@ -55,9 +50,7 @@ def test_run_batch_error_before_batch_created(dag, mocker):
 def test_run_batch_exception_during_status_probing(dag, mocker, code):
     op = LivyBatchOperator(task_id="test_run_batch", spill_logs=True, dag=dag)
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
-    mock_batch_responses(
-        mocker, batch_id=BATCH_ID, get_code=code, get_resp=None,
-    )
+    mock_batch_responses(mocker, mock_status=False)
     with raises(AirflowException) as ae:
         op.execute({})
     print(
@@ -71,3 +64,12 @@ def test_run_batch_exception_during_status_probing(dag, mocker, code):
         op.execute({})
     # spill_logs=False, but error occured and Operator had the batch_id.
     assert spill_logs_spy.call_count == 2
+
+
+@responses.activate
+def test_run_batch_verify_in_spark(dag, mocker):
+    op = LivyBatchOperator(
+        task_id="test_run_batch_verify_in_spark", verify_in="spark", dag=dag
+    )
+    mock_batch_responses(mocker, mock_spark=True)
+    op.execute({})

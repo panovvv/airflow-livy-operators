@@ -23,7 +23,7 @@ def test_batch_sensor_timeout(mocker):
         sen.execute({})
     assert 2 <= http_response.send.call_count <= 4
     print(
-        f"\n\nImitated poke_interval=1 sec. timeout=2 sec. while waiting for batch to finish, "
+        f"\n\nImitated period=1sec, timeout=2sec while waiting for batch to finish, "
         f"got the expected exception:\n<{te.value}>\n"
         f"API was polled {http_response.send.call_count} times."
     )
@@ -66,7 +66,7 @@ def test_batch_sensor_valid_states(mocker, state):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_valid_states")
     http_response = mock_http_response(200, content=f'{{"id": 2, "state": "{state}"}}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
-    assert sen.poke({}) == False
+    assert not sen.poke({})
 
 
 @mark.parametrize(
