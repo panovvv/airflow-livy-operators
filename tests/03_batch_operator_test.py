@@ -1,19 +1,21 @@
+import requests
 import responses
 from airflow import AirflowException
 from airflow.hooks.base_hook import BaseHook
 from airflow.models import Connection
-from airflow_home.plugins import LivyBatchOperator
 from pytest import mark, raises
-from tests.helpers import mock_batch_responses
+
+from airflow_home.plugins import LivyBatchOperator
+from tests.helpers import mock_livy_batch_responses
 
 
 @responses.activate
 def test_run_batch_successfully(dag, mocker):
     op = LivyBatchOperator(
-        task_id="test_run_batch_successfully", spill_logs=False, dag=dag
+        spill_logs=False, task_id="test_run_batch_successfully", dag=dag
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
-    mock_batch_responses(mocker)
+    mock_livy_batch_responses(mocker)
     op.execute({})
 
     # spill_logs is False and batch completed successfully, so we don't expect logs.
@@ -27,7 +29,7 @@ def test_run_batch_successfully(dag, mocker):
 
 def test_run_batch_error_before_batch_created(dag, mocker):
     op = LivyBatchOperator(
-        task_id="test_run_batch_error_before_batch_created", spill_logs=True, dag=dag,
+        spill_logs=True, task_id="test_run_batch_error_before_batch_created", dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mocker.patch.object(
@@ -35,7 +37,7 @@ def test_run_batch_error_before_batch_created(dag, mocker):
         "_get_connections_from_db",
         return_value=[Connection(host="HOST", port=123)],
     )
-    with raises(AirflowException) as ae:
+    with raises(requests.exceptions.ConnectionError) as ae:
         op.execute({})
     print(
         f"\n\nNo response from server was mocked, "
@@ -48,9 +50,9 @@ def test_run_batch_error_before_batch_created(dag, mocker):
 @responses.activate
 @mark.parametrize("code", [404, 403, 500, 503, 504])
 def test_run_batch_exception_during_status_probing(dag, mocker, code):
-    op = LivyBatchOperator(task_id="test_run_batch", spill_logs=True, dag=dag)
+    op = LivyBatchOperator(spill_logs=True, task_id="test_run_batch", dag=dag)
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
-    mock_batch_responses(mocker, mock_status=False)
+    mock_livy_batch_responses(mocker, mock_get={code: f"Response from server:{code}"})
     with raises(AirflowException) as ae:
         op.execute({})
     print(
@@ -69,7 +71,221 @@ def test_run_batch_exception_during_status_probing(dag, mocker, code):
 @responses.activate
 def test_run_batch_verify_in_spark(dag, mocker):
     op = LivyBatchOperator(
-        task_id="test_run_batch_verify_in_spark", verify_in="spark", dag=dag
+        verify_in="spark",
+        spill_logs=False,
+        task_id="test_run_batch_verify_in_spark",
+        dag=dag,
     )
-    mock_batch_responses(mocker, mock_spark=True)
+    spark_checker_spy = mocker.spy(op, "check_spark_app_status")
+    mock_livy_batch_responses(mocker)
     op.execute({})
+    spark_checker_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_no_appid(dag, mocker):
+    op = LivyBatchOperator(
+        verify_in="spark", spill_logs=False, task_id="test_run_batch_no_appid", dag=dag,
+    )
+    spill_logs_spy = mocker.spy(op, "spill_batch_logs")
+    mock_livy_batch_responses(
+        mocker, mock_get={200: {"state": "success", "appId": None}}
+    )
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated null Spark appId, then checked status via Spark REST API, "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+    # spill_logs=True, and Operator had the batch_id by the time error occured.
+    spill_logs_spy.assert_called_once()
+
+    mock_livy_batch_responses(
+        mocker, mock_get={200: {"state": "success", "noappId": "here"}}
+    )
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated no key for Spark appId, then checked status via Spark REST API, "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+    assert spill_logs_spy.call_count == 2
+
+
+@responses.activate
+def test_run_batch_verify_in_spark_failed(dag, mocker):
+    op = LivyBatchOperator(
+        verify_in="spark",
+        spill_logs=False,
+        task_id="test_run_batch_verify_in_spark_failed",
+        dag=dag,
+    )
+    spill_logs_spy = mocker.spy(op, "spill_batch_logs")
+    mock_livy_batch_responses(
+        mocker,
+        mock_spark={
+            200: [
+                {"jobId": 1, "status": "SUCCEEDED"},
+                {"jobId": 2, "status": "FAILED"},
+            ]
+        },
+    )
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated failed Spark job, then checked status via Spark REST API, "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+    # spill_logs=True, and Operator had the batch_id by the time error occured.
+    spill_logs_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_verify_in_spark_garbled(dag, mocker):
+    op = LivyBatchOperator(
+        verify_in="spark",
+        spill_logs=False,
+        task_id="test_run_batch_verify_in_spark_garbled",
+        dag=dag,
+    )
+    spill_logs_spy = mocker.spy(op, "spill_batch_logs")
+    mock_livy_batch_responses(
+        mocker, mock_spark={200: {"unparsable": "crap"}},
+    )
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated garbled output from Spark REST API, "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+    spill_logs_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_verify_in_yarn(dag, mocker):
+    op = LivyBatchOperator(
+        verify_in="yarn",
+        spill_logs=False,
+        task_id="test_run_batch_verify_in_spark",
+        dag=dag,
+    )
+    yarn_checker_spy = mocker.spy(op, "check_yarn_app_status")
+    mock_livy_batch_responses(mocker)
+    op.execute({})
+    yarn_checker_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_verify_in_yarn_garbled_response(dag, mocker):
+    op = LivyBatchOperator(
+        verify_in="yarn",
+        spill_logs=False,
+        task_id="test_run_batch_verify_in_spark",
+        dag=dag,
+    )
+    spill_logs_spy = mocker.spy(op, "spill_batch_logs")
+    mock_livy_batch_responses(
+        mocker, mock_yarn={200: "<!DOCTYPE html><html>notjson</html>"}
+    )
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated garbled output from YARN REST API, "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+    spill_logs_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_verify_in_yarn_failed(dag, mocker):
+    op = LivyBatchOperator(
+        verify_in="yarn",
+        spill_logs=False,
+        task_id="test_run_batch_verify_in_spark",
+        dag=dag,
+    )
+    spill_logs_spy = mocker.spy(op, "spill_batch_logs")
+    mock_livy_batch_responses(
+        mocker, mock_yarn={200: {"app": {"finalStatus": "NOTGOOD"}}}
+    )
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated failed status from YARN REST API, "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+    spill_logs_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_logs_less_pages_than_page_size(dag, mocker):
+    op = LivyBatchOperator(
+        spill_logs=True,
+        task_id="test_run_batch_logs_less_pages_than_page_size",
+        dag=dag,
+    )
+    fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
+    mock_livy_batch_responses(mocker, log_lines=7)
+    op.execute({})
+    fetch_log_page_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_logs_one_page_size(dag, mocker):
+    op = LivyBatchOperator(
+        spill_logs=True, task_id="test_run_batch_logs_one_page_size", dag=dag,
+    )
+    fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
+    mock_livy_batch_responses(mocker, log_lines=100)
+    op.execute({})
+    fetch_log_page_spy.assert_called_once()
+
+
+@responses.activate
+def test_run_batch_logs_multiple_of_page_size(dag, mocker):
+    op = LivyBatchOperator(
+        spill_logs=True, task_id="test_run_batch_logs_multiple_of_page_size", dag=dag,
+    )
+    fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
+    mock_livy_batch_responses(mocker, log_lines=300)
+    op.execute({})
+    assert fetch_log_page_spy.call_count == 3
+
+
+@responses.activate
+def test_run_batch_logs_greater_than_page_size(dag, mocker):
+    op = LivyBatchOperator(
+        spill_logs=True, task_id="test_run_batch_logs_greater_than_page_size", dag=dag,
+    )
+    fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
+    mock_livy_batch_responses(mocker, log_lines=321)
+    op.execute({})
+    assert fetch_log_page_spy.call_count == 4
+
+
+@responses.activate
+def test_run_batch_logs_malformed_json(dag, mocker):
+    op = LivyBatchOperator(
+        spill_logs=True, task_id="test_run_batch_logs_greater_than_page_size", dag=dag,
+    )
+    mock_livy_batch_responses(mocker, log_override_response='{"invalid":json]}')
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated malformed response when calling /logs , "
+        f"got the expected exception:\n<{ae.value}>"
+    )
+
+
+@responses.activate
+def test_run_batch_logs_missing_attrs_in_json(dag, mocker):
+    op = LivyBatchOperator(
+        spill_logs=True, task_id="test_run_batch_logs_missing_attrs_in_json", dag=dag,
+    )
+    mock_livy_batch_responses(mocker, log_override_response='{"id": 1, "from": 2}')
+    with raises(AirflowException) as ae:
+        op.execute({})
+    print(
+        f"\n\nImitated missing attributes when calling /logs , "
+        f"got the expected exception:\n<{ae.value}>"
+    )

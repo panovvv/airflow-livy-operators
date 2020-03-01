@@ -20,11 +20,14 @@ def log_response_error(lookup_path, response, session_id=None, statement_id=None
         msg += f" Session id={session_id}."
     if statement_id is not None:
         msg += f" Statement id={statement_id}."
-    pp_response = (
-        json.dumps(json.loads(response.content), indent=2)
-        if "application/json" in response.headers.get("Content-Type", "")
-        else response.content
-    )
+    try:
+        pp_response = (
+            json.dumps(json.loads(response.content), indent=2)
+            if "application/json" in response.headers.get("Content-Type", "")
+            else response.content
+        )
+    except AttributeError:
+        pp_response = json.dumps(response, indent=2)
     msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
     logging.error(msg)
 

@@ -5,11 +5,12 @@ from typing import Iterable, Mapping
 from airflow import AirflowException
 from airflow.exceptions import AirflowBadRequest
 from airflow.hooks.http_hook import HttpHook
-from airflow_home.plugins import LivyBatchOperator
 from deepdiff import DeepDiff
 from pytest import mark, raises
 from requests import Response
-from tests.helpers import mock_http_response
+
+from airflow_home.plugins import LivyBatchOperator
+from tests.helpers import mock_http_calls
 
 
 def test_jinja(dag):
@@ -41,10 +42,10 @@ def test_invalid_verification(dag):
 
 def test_submit_batch_get_id(dag, mocker):
     op = LivyBatchOperator(task_id="test_submit_batch_get_id", dag=dag)
-    http_response = mock_http_response(201, content=b'{"id": 123}')
+    http_response = mock_http_calls(201, content=b'{"id": 123}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
-    val = op.submit_batch()
-    assert val == 123
+    op.submit_batch()
+    assert op.batch_id == 123
 
 
 def find_json_in_args(args_list: Iterable, kwargs_map: Mapping):
@@ -147,7 +148,7 @@ def test_submit_batch_params(dag, mocker):
 @mark.parametrize("code", [404, 403, 500, 503, 504])
 def test_submit_batch_bad_response_codes(dag, mocker, code):
     op = LivyBatchOperator(task_id="test_submit_batch_bad_response_codes", dag=dag)
-    http_response = mock_http_response(
+    http_response = mock_http_calls(
         code, content=b"Error content", reason="Good reason"
     )
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
@@ -161,7 +162,7 @@ def test_submit_batch_bad_response_codes(dag, mocker, code):
 
 def test_submit_batch_malformed_json(dag, mocker):
     op = LivyBatchOperator(task_id="test_submit_batch_malformed_json", dag=dag)
-    http_response = mock_http_response(201, content=b'{"id":{}')
+    http_response = mock_http_calls(201, content=b'{"id":{}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as bre:
         op.submit_batch()
@@ -173,7 +174,7 @@ def test_submit_batch_malformed_json(dag, mocker):
 
 def test_submit_batch_string_id(dag, mocker):
     op = LivyBatchOperator(task_id="test_submit_batch_invalid_json", dag=dag)
-    http_response = mock_http_response(201, content=b'{"id":"unexpectedly, a string!"}')
+    http_response = mock_http_calls(201, content=b'{"id":"unexpectedly, a string!"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowException) as ae:
         op.submit_batch()

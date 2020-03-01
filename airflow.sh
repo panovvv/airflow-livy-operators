@@ -23,7 +23,7 @@ init_dev() {
   fi
 }
 
-export_airflow_env () {
+export_airflow_env() {
   AIRFLOW_HOME="${SCRIPT_DIR}/airflow_home"
   export AIRFLOW_HOME
   export AIRFLOW__CORE__LOAD_EXAMPLES=False
@@ -105,43 +105,29 @@ remove_trash() {
 }
 
 show_help() {
-  echo "Use case 1: bring up Airflow at http://localhost:8888/admin/ and run test DAGs:"
-  echo "            ./airflow.sh up"
-  echo "Use case 2: kill all Airflow processes:"
-  echo "            ./airflow.sh down"
-  echo "Use case 3.1: prepare development environment:"
-  echo "            ./airflow.sh dev"
-  echo "Use case 3.2: run tests and generate HTML coverage report:"
-  echo "            ./airflow.sh cov"
+  echo "Options for just running the examples:"
+  echo "up         -   bring up Airflow at http://localhost:8888/admin/ to run test DAGs"
+  echo "down       -   tear down Airflow"
   echo
-  echo "Full list of commands:"
-  echo "rm-trash   -   remove Python and Airflow debris"
+  echo "Development options:"
+  echo "cov        -   run tests and generate HTML coverage report."
+  echo "lint       -   see what's wrong with the code style"
+  echo "format     -   reformat code"
+  echo "ci         -   run the same commands that CI runs"
   echo "clean      -   previous + delete virtual environment, i.e. full cleaning."
+  echo "rm-trash   -   remove Python and Airflow debris"
+  echo
+  echo "Rarely used separately, supplementary options:"
   echo "venv       -   install virtual environment with all requirements for Airflow and PySpark"
+  echo "dev        -   prepare development environment."
   echo "init       -   prep Airflow database, variables, connections etc."
   echo "batches    -   copy the batches from batches/ to where Spark cluster can reach them.)"
   echo "               Re-define as needed (e.g. aws s3 cp batches/ s3:/dev/pyspark)"
-  echo "up         -   bring up Airflow"
-  echo "down       -   tear down Airflow"
-  echo "dev        -   prepare development environment."
-  echo "cov        -   run tests and generate HTML coverage report."
 }
 
 case "$1" in
 
-cov)
-  create_venv
-  init_dev
-  . "${SCRIPT_DIR}/venv/bin/activate"
-  cd "${SCRIPT_DIR}" || exit
-  pytest --cov=airflow_home.plugins --cov-report=html
-  deactivate
-  ;;
-
-dev)
-  create_venv
-  init_dev
-  ;;
+# Options for just running the examples:"
 
 up)
   copy_batches
@@ -158,18 +144,43 @@ down)
   pkill -f airflow
   ;;
 
-batches)
-  copy_batches
+# Development options:
+
+cov)
+  create_venv
+  init_dev
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  cd "${SCRIPT_DIR}" || exit
+  pytest --cov=airflow_home.plugins --cov-report=html
+  deactivate
   ;;
 
-init)
+lint)
   create_venv
-  export_airflow_env
-  init_airflow
+  init_dev
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  cd "${SCRIPT_DIR}" || exit
+  flake8
+  deactivate
   ;;
 
-venv)
+format)
   create_venv
+  init_dev
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  cd "${SCRIPT_DIR}" || exit
+  black airflow_home/ batches/ tests/
+  isort -rc airflow_home/ batches/ tests/
+  deactivate
+  ;;
+
+ci)
+  create_venv
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  cd "${SCRIPT_DIR}" || exit
+  pip install tox==3.14.5
+  tox
+  deactivate
   ;;
 
 clean)
@@ -180,6 +191,27 @@ clean)
 
 rm-trash)
   remove_trash
+  ;;
+
+# Rarely used separately, supplementary options:
+
+venv)
+  create_venv
+  ;;
+
+dev)
+  create_venv
+  init_dev
+  ;;
+
+init)
+  create_venv
+  export_airflow_env
+  init_airflow
+  ;;
+
+batches)
+  copy_batches
   ;;
 
 *)

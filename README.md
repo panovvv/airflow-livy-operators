@@ -71,21 +71,6 @@ should look like this:
 PYTHONUNBUFFERED=1;AIRFLOW_HOME=/Users/vpanov/data/vpanov/airflow-livy-plugins/airflow_home
 ```
 
-* Use PyCharm PyLint plugin to verify if your code conforms to PEP8 and other 
-clean code guidelines. Just install it under "Preferences" -> "Plugins". If any 
-questions arise, refer to [pylint-pycharm README.md on Github](https://github.com/leinardi/pylint-pycharm 
-"pylint-pycharm GIT repo"). As soon as the plugin has been installed, set the
-path to __.pylintrc__ as __airflow-livy-plugins/airflow_home/.pylintrc__ in
-"Preferences" -> "PyLint" -> "Path to pylintrc".
-Under "Arguments", type in `--load-plugins=pylint_airflow`. Don't forget to
-exclude __venv__ folder (guidelines on the same README.md page
-from Github) if you don't want to be bugged about code style errors in
-Airflow and PySpark code.
-
-http://michal.karzynski.pl/blog/2017/03/19/developing-workflows-with-apache-airflow/
-
-
-
 https://github.com/panovvv/bigdata-docker-compose
 
 
@@ -125,16 +110,9 @@ Spark Application Id: null
 Spark WebUI: null
 
 
-linting: 
-
-```bash
-flake8
-pylint --rcfile=.pylintrc --load-plugins=pylint_airflow airflow_home/
-```
-
 
 formatting:
-black airflow_home/ batches/ tests/ && isort -rc airflow_home/ batches/ tests/
+./airflow.sh format
 
 COverage
 pytest --cov=airflow_home.plugins

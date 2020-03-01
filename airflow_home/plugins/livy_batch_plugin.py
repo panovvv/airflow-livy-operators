@@ -38,11 +38,14 @@ def log_response_error(lookup_path, response, batch_id=None):
     msg = "Can not parse JSON response."
     if batch_id is not None:
         msg += f" Batch id={batch_id}."
-    pp_response = (
-        json.dumps(json.loads(response.content), indent=2)
-        if "application/json" in response.headers.get("Content-Type", "")
-        else response.content
-    )
+    try:
+        pp_response = (
+            json.dumps(json.loads(response.content), indent=2)
+            if "application/json" in response.headers.get("Content-Type", "")
+            else response.content
+        )
+    except AttributeError:
+        pp_response = json.dumps(response, indent=2)
     msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
     logging.error(msg)
 
@@ -160,6 +163,7 @@ class LivyBatchOperator(BaseOperator):
         self.http_conn_id_spark = http_conn_id_spark
         self.http_conn_id_yarn = http_conn_id_yarn
         self.spill_logs = spill_logs
+        self.batch_id = None
 
     def execute(self, context):
         """
@@ -169,12 +173,11 @@ class LivyBatchOperator(BaseOperator):
         3. If an additional verification method is specified, retrieve it and
         disregard  the batch job status from Livy.
         """
-        batch_id = None
         try:
-            batch_id = self.submit_batch()
-            logging.info(f"Batch successfully submitted with id = {batch_id}.")
+            self.submit_batch()
+            logging.info(f"Batch successfully submitted with id = {self.batch_id}.")
             LivyBatchSensor(
-                batch_id,
+                self.batch_id,
                 task_id=self.task_id,
                 http_conn_id=self.http_conn_id_livy,
                 poke_interval=self.poll_period_sec,
@@ -182,30 +185,21 @@ class LivyBatchOperator(BaseOperator):
             ).execute(context)
             if self.verify_in in VERIFICATION_METHODS:
                 logging.info(
-                    f"Additionally verifying status for batch id {batch_id} "
+                    f"Additionally verifying status for batch id {self.batch_id} "
                     f"via {self.verify_in}..."
                 )
-                app_id = self.get_spark_app_id(batch_id)
-                logging.info(f"Found app id '{app_id}' for batch id {batch_id}.")
-                if self.verify_in == "spark":
-                    self.check_spark_app_status(app_id)
-                else:
-                    self.check_yarn_app_status(app_id)
-                logging.info(
-                    f"App '{app_id}' associated with batch {batch_id} completed!"
-                )
-        except Exception as ex:
-            if batch_id is not None:
-                self.spill_batch_logs(batch_id)
-                self.close_batch(batch_id)
-                batch_id = None
-            raise AirflowException(ex)
+                self.verify()
+        except Exception:
+            if self.batch_id is not None:
+                self.spill_batch_logs()
+                self.close_batch()
+                self.batch_id = None
+            raise
         finally:
-            if batch_id is not None:
+            if self.batch_id is not None:
                 if self.spill_logs:
-                    self.spill_batch_logs(batch_id)
-                self.close_batch(batch_id)
-        return batch_id
+                    self.spill_batch_logs()
+                self.close_batch()
 
     def submit_batch(self):
         headers = {"X-Requested-By": "airflow", "Content-Type": "application/json"}
@@ -240,12 +234,23 @@ class LivyBatchOperator(BaseOperator):
             if not isinstance(batch_id, Number):
                 raise AirflowException(
                     "ID of the created batch is not a number. "
-                    "Are you sure we're calling Livy?"
+                    "Are you sure we're calling Livy API?"
                 )
-            return batch_id
+            self.batch_id = batch_id
         except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.id", response)
             raise AirflowBadRequest(ex)
+
+    def verify(self):
+        app_id = self.get_spark_app_id(self.batch_id)
+        if app_id is None:
+            raise AirflowException(f"Spark appId was null for batch {self.batch_id}")
+        logging.info(f"Found app id '{app_id}' for batch id {self.batch_id}.")
+        if self.verify_in == "spark":
+            self.check_spark_app_status(app_id)
+        else:
+            self.check_yarn_app_status(app_id)
+        logging.info(f"App '{app_id}' associated with batch {self.batch_id} completed!")
 
     def get_spark_app_id(self, batch_id):
         logging.info(f"Getting Spark app id from Livy API for batch {batch_id}...")
@@ -280,7 +285,7 @@ class LivyBatchOperator(BaseOperator):
                         f"Job id '{job_id}' associated with application '{app_id}' "
                         f"is '{job_status}', expected status is '{expected_status}'"
                     )
-        except (JSONDecodeError, LookupError) as ex:
+        except (JSONDecodeError, LookupError, TypeError) as ex:
             log_response_error("$.jobId, $.status", response)
             raise AirflowBadRequest(ex)
 
@@ -292,7 +297,7 @@ class LivyBatchOperator(BaseOperator):
         )
         try:
             status = json.loads(response.content)["app"]["finalStatus"]
-        except (JSONDecodeError, LookupError) as ex:
+        except (JSONDecodeError, LookupError, TypeError) as ex:
             log_response_error("$.app.finalStatus", response)
             raise AirflowBadRequest(ex)
         expected_status = "SUCCEEDED"
@@ -301,38 +306,47 @@ class LivyBatchOperator(BaseOperator):
                 f"YARN app {app_id} is '{status}', expected status: '{expected_status}'"
             )
 
-    def spill_batch_logs(self, batch_id):
+    def spill_batch_logs(self):
         dashes = 50
-        logging.info(f"{'-'*dashes}Full log for batch {batch_id}{'-'*dashes}")
-        endpoint = f"{LIVY_ENDPOINT}/{batch_id}/log?from="
+        logging.info(f"{'-'*dashes}Full log for batch {self.batch_id}{'-'*dashes}")
+        endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}/log"
         hook = HttpHook(method="GET", http_conn_id=self.http_conn_id_livy)
         line_from = 0
         line_to = LOG_PAGE_LINES
         while True:
-            prepd_endpoint = endpoint + f"{line_from}&size={line_to}"
-            response = hook.run(prepd_endpoint)
+            log_page = self.fetch_log_page(hook, endpoint, line_from, line_to)
             try:
-                log_page = json.loads(response.content)
                 logs = log_page["log"]
                 for log in logs:
                     logging.info(log.replace("\\n", "\n"))
                 actual_line_from = log_page["from"]
                 total_lines = log_page["total"]
-            except (JSONDecodeError, LookupError) as ex:
-                log_response_error("$.log, $.from, $.total", response)
+            except LookupError as ex:
+                log_response_error("$.log, $.from, $.total", log_page)
                 raise AirflowBadRequest(ex)
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(
-                    f"{'-' * dashes}End of full log for batch {batch_id}{'-' * dashes}"
+                    f"{'-' * dashes}End of full log for batch {self.batch_id}"
+                    f"{'-' * dashes}"
                 )
                 break
             line_from = actual_line_from + actual_lines
 
-    def close_batch(self, batch_id):
-        logging.info(f"Closing batch with id = {batch_id}")
-        batch_endpoint = f"{LIVY_ENDPOINT}/{batch_id}"
+    @staticmethod
+    def fetch_log_page(hook: HttpHook, endpoint, line_from, line_to):
+        prepd_endpoint = endpoint + f"?from={line_from}&size={line_to}"
+        response = hook.run(prepd_endpoint)
+        try:
+            return json.loads(response.content)
+        except JSONDecodeError as ex:
+            log_response_error("$", response)
+            raise AirflowBadRequest(ex)
+
+    def close_batch(self):
+        logging.info(f"Closing batch with id = {self.batch_id}")
+        batch_endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
         HttpHook(method="DELETE", http_conn_id=self.http_conn_id_livy).run(
             batch_endpoint
         )
-        logging.info(f"Batch {batch_id} has been closed")
+        logging.info(f"Batch {self.batch_id} has been closed")
