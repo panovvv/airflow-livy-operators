@@ -28,6 +28,7 @@ export_airflow_env() {
   export AIRFLOW_HOME
   export AIRFLOW__CORE__LOAD_EXAMPLES=False
   export AIRFLOW__WEBSERVER__WEB_SERVER_PORT=8888
+  export SLUGIFY_USES_TEXT_UNIDECODE=yes
 }
 
 init_airflow() {
@@ -114,6 +115,11 @@ show_help() {
   echo "lint       -   see what's wrong with the code style"
   echo "format     -   reformat code"
   echo "ci         -   run the same commands that CI runs"
+  echo "pypi       -   prepare the package for PyPi."
+  echo "               after that you just run"
+  echo "    twine upload --repository-url https://test.pypi.org/legacy/ dist/*"
+  echo "               for Test PyPi, or this for PyPi:"
+  echo "    twine upload dist/*"
   echo "clean      -   previous + delete virtual environment, i.e. full cleaning."
   echo "rm-trash   -   remove Python and Airflow debris"
   echo
@@ -180,9 +186,24 @@ ci)
   cd "${SCRIPT_DIR}" || exit
   if ! python -c "import tox" > /dev/null 2>&1
   then
-    echo "pip install tox==3.14.5"
+    pip install tox==3.14.5
   fi
   tox
+  deactivate
+  ;;
+
+pypi)
+  create_venv
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  cd "${SCRIPT_DIR}" || exit
+  if ! python -c "import twine" > /dev/null 2>&1
+  then
+    pip install twine==3.1.1
+  fi
+  remove_trash
+  python setup.py bdist_wheel
+  python setup.py sdist
+  twine check dist/*
   deactivate
   ;;
 

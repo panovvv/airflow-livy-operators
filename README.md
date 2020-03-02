@@ -1,80 +1,67 @@
-TODO UPDATE README
-
 # Airflow Livy Plugins
 
 [![Build Status](https://travis-ci.org/panovvv/airflow-livy-plugins.svg?branch=master)](https://travis-ci.org/panovvv/airflow-livy-plugins)
 [![Code coverage](https://codecov.io/gh/panovvv/airflow-livy-plugins/branch/master/graph/badge.svg)](https://codecov.io/gh/panovvv/airflow-livy-plugins)
 
-Plugins for Airflow to run Spark jobs via Livy: session mode, batch mode and hybrid (batch + Spark REST API)
+Plugins for Airflow to run Spark jobs via Livy: 
+* Sessions,
+* Batches. This mode supports additional verification via Spark/YARN REST API.
 
 See [this blog post](https://www.shortn0tes.com/2019/08/airflow-spark-livy-sessions-batches.html "Blog post") for more information and detailed comparison of ways to run Spark jobs from Airflow.
 
-## Folder structure
-* `airflow`: DAGs and plugins for Airflow. Those 2 directories correspond
-to Airflow folders of the same name.
-* `pyspark`: Spark jobs code.
+## Directories and files of interest
+* `airflow_home`: example DAGs and plugins for Airflow. Can be used as 
+Airflow home path.
+* `batches`: Spark jobs code, to be used in Livy batches.
+* `sessions`: (Optionally) templated Spark code for Livy sessions.
+* `airflow.sh`: helper shell script. Can be used to run sample DAGs,
+prep development environment and more.
+Run it to find out what other commands are available.
 
-## How to...
 
+## How do I...
 
 ### ...run the examples?
 Prerequisites:
 * Python 3. Make sure it's installed and in __$PATH__
-* Docker, Docker-Compose.
-* You also need to set a specific environment variable for Airflow to work:
-```bash
-export SLUGIFY_USES_TEXT_UNIDECODE=yes
-```
-You may add this line to your __.bashrc__/__.bash_profile__ file if you're running a
-UNIX-compliant OS.
-
 
 Now, 
-* run `make up` in this directory to bring up the whole infrastructure. 
+1. Do you have a Spark cluster with Livy running somewhere?
+    1. *No*. Either get one, or "mock" it with 
+    [my Spark cluster on Docker Compose](https://github.com/panovvv/bigdata-docker-compose).
+    1. *Yes*. You're golden!
+1. __Optional - this step can be skipped if you're mocking a cluster on your
+machine__. Open *airflow.sh*. Inside `init_airflow ()` function you'll see Airflow
+Connections for Livy, Spark and YARN. Redefine as appropriate.
+1. run `./airflow.sh up` to bring up the whole infrastructure. 
 Airflow UI will be available at
-[localhost:8080](http://localhost:8080 "Airflow UI").
-
-* `make logs` will follow Airflow logs.
-
-* `make down` to dispose of Airflow (remove all Airflow-related Docker
-containers)
-
-* Look at the Makefile in repository root to find out what other commands
-are available.
+[localhost:8080](http://localhost:8888 "Airflow UI").
+1. Ctrl+C to stop Airflow. Then `./airflow.sh down` to dispose of
+remaining Airflow processes (shouldn't be needed there if everything goes well).
 
 
 ### ...set up development environment?
 
-* run `make venv` in this directory.
+* run `/airflow.sh dev` to install all dev dependencies.
 * (Pycharm-specific) point PyCharm to your newly-created virtual environment: go to
-"Preferences" -> "Project: airflow-livy-plugins" -> "Project interpreter", select
-"Existing environment" and pick __python3__ executable from __venv__ folder
+`"Preferences" -> "Project: airflow-livy-plugins" -> "Project interpreter", select
+"Existing environment"` and pick __python3__ executable from __venv__ folder
 (__venv/bin/python3__)
-* More IDEs to come! Send instructions for your favorite IDE in PRs.
+* `./airflow.sh cov` - run tests with coverage report 
+(will be saved to *htmlcov/*).
+* `./airflow.sh lint` - highlight code style errors.
+* `./airflow.sh format` to reformat all code 
+([Black](https://black.readthedocs.io/en/stable/) + 
+[isort](https://readthedocs.org/projects/isort/))
 
+### ... debug?
 
-TODO Formatting
-
-todo debug
-
-
-* (Optional) Debugging operators with `airflow test`.  In Pycharm, create a
-new Python run configuration. Point it at __airflow-livy-plugins/airflow_home/venv/bin/airflow__
-for "Script path", and in "Parameters" type in
-`test TODO 2017-03-18T18:00:00.0`
-where second and third words are the names of the DAG and the operator
-you want to test, respectively. Plug the names of whatever DAG and operator
-you'd like to test instead. Additionally, set up another Environment variable
-in the same window to point at your __airflow__ directory. The result
-should look like this:
-```
-PYTHONUNBUFFERED=1;AIRFLOW_HOME=/Users/vpanov/data/vpanov/airflow-livy-plugins/airflow_home
-```
-
-https://github.com/panovvv/bigdata-docker-compose
-
-
-
+* (Pycharm-specific) Step-by-step debugging with `airflow test` 
+and running PySpark batch jobs locally (with debugging as well) 
+is supported via run configurations under `.idea/runConfigurations`.
+You shouldn't have to do anything to use them - just open the folder
+in PyCharm as a project.
+* An example of how a batch can be ran on local Spark:
 ```bash
 python ./batches/join_2_files.py \
 "file:////Users/vpanov/data/vpanov/bigdata-docker-compose/data/grades.csv" \
@@ -90,40 +77,6 @@ python ./batches/join_2_files.py \
 #-output_path="file:///Users/vpanov/livy_batch_example" 
 ```
 
-
-Spark Application Id: null when running livy in zeppelin means it's in local mode
-appId null local mode
-
-batch fail status is real in local mode.
-
-
-YARN: 
-
-Spark Application Id: application_1581953991557_0001
-
-Spark WebUI: http://master:8088/proxy/application_1581953991557_0001/
-
-Local:
-
-Spark Application Id: null
-
-Spark WebUI: null
-
-
-
-formatting:
-./airflow.sh format
-
-COverage
-pytest --cov=airflow_home.plugins
-
-tests
-pytest
-
-dev env and running the examples:
-./airflow.sh up
-./airflow.sh dev
-./airflow.sh test - run tests with coverage
-
-# See usage
-./airflow.sh
+## TODO
+* airflow.sh - replace with modern tools (e.g. pipenv + Docker image)
+* Disable some of flake8 flags for cleaner code

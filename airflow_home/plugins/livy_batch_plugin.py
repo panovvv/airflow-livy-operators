@@ -1,12 +1,19 @@
 """
-Makes use of both Livy Batch mode and Spark REST API.
-Spark REST API is only invoked to get an actual status of application,
-as in YARN mode
-(TODO WHEN???) it always shows as "succeeded" even when underlying job fails.
+Workflow:
+1. Submit a batch to Livy.
+2. Poll API until it's ready.
+3. If an additional verification method is specified, retrieve the job status
+there and disregard the batch status from Livy.
+
+Supported verification methods are Spark/YARN REST API.
+When the batch job is running in cluster mode on YARN cluster,
+it sometimes shows as "succeeded" even when underlying job fails.
 
 https://livy.incubator.apache.org/docs/latest/rest-api.html
 https://spark.apache.org/docs/latest/monitoring.html#rest-api
+https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/ResourceManagerRest.html
 """
+
 import json
 import logging
 from json import JSONDecodeError
@@ -166,13 +173,6 @@ class LivyBatchOperator(BaseOperator):
         self.batch_id = None
 
     def execute(self, context):
-        """
-        Workflow:
-        1. Submit a batch to Livy.
-        2. Poll API until it's ready.
-        3. If an additional verification method is specified, retrieve it and
-        disregard  the batch job status from Livy.
-        """
         try:
             self.submit_batch()
             logging.info(f"Batch successfully submitted with id = {self.batch_id}.")

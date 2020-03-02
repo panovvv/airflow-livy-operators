@@ -6,6 +6,7 @@ There's no way to pass parameters into statements natively (i.e. via REST API)
 so we're making our code templated and render it with Jinja.
 params dict contains variables to plug into code template.
 """
+
 from datetime import datetime
 
 from airflow import DAG

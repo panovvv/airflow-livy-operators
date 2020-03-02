@@ -1,6 +1,6 @@
 """
-TODO doc.
-bla
+This is the same failing batch as 04_batch_example_failing.py,
+but we additionally validate batch status via YARN REST API.
 """
 
 from datetime import datetime

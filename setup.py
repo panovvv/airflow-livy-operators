@@ -1,4 +1,4 @@
-from setuptools import find_packages, setup
+from setuptools import setup
 
 with open("README.md") as fh:
     long_description = fh.read()
@@ -13,6 +13,6 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/panovvv/airflow-livy-plugins",
     license="MIT License",
-    packages=find_packages(),
+    packages=["airflow_home.plugins"],
     python_requires=">=3.7",
 )

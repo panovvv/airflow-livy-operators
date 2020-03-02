@@ -1,3 +1,15 @@
+"""
+Workflow:
+1. Create a session in Livy
+2. Poll API until it's ready to execute statements
+3. Submit provided statements to the session, one by one
+4. For each submitted statement, poll API until it's completed or failed.
+   If one of the statements fail, do not proceed with the remaining ones.
+5. Close the session.
+
+https://livy.incubator.apache.org/docs/latest/rest-api.html
+"""
+
 import json
 import logging
 from json import JSONDecodeError
@@ -252,15 +264,6 @@ class LivySessionOperator(BaseOperator):
         self.session_id = None
 
     def execute(self, context):
-        """
-        Workflow:
-        1. Create a session in Livy
-        2. Poll API until it's ready to execute statements
-        3. Submit provided statements to the session, one by one
-        4. For each submitted statement, poll API until it's completed or failed.
-           If one of the statements fail, do not proceed with the remaining ones.
-        5. Close the session.
-        """
         try:
             self.create_session()
             logging.info(f"Session has been created with id = {self.session_id}.")

@@ -1,8 +1,10 @@
 """
 This is the DAG that will show you one interesting specific of how Livy works
-in local mode vs in YARN mode (job running in cluster mode).
-This DAG runs an intentionally failing Livy batch.
-TODO doc
+in local or YARN client mode vs YARN cluster mode.
+
+This DAG runs an intentionally failing Livy batch - if your cluster supports
+aforementioned configuration, in some cases you'll see the batch fail with
+Livy reporting successful job.
 """
 
 from datetime import datetime
@@ -47,7 +49,7 @@ op = LivyBatchOperator(
     ],
     # This will work if deploy mode is not specified in livy.conf already.
     # It's 'client' by default
-    conf={"spark.submit.deployMode": "client"},
+    conf={"spark.submit.deployMode": "cluster"},
     task_id="livy_batch_example_failing",
     dag=dag,
 )

@@ -1,7 +1,6 @@
 """
-todo doc.
-
-doc
+This code just joins two files on any column.
+The result can be saved to a file.
 """
 
 import argparse
