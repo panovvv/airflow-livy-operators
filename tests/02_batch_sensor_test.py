@@ -33,9 +33,9 @@ def test_batch_sensor_timeout(mocker):
 @mark.parametrize(
     "poke_interval,timeout", [(0, 0), (0, 1), (1, 0), (10, 0), (10, 1), (1000, 2)]
 )
-def test_batch_sensor_timeout_invalid(poke_interval, timeout):
+def test_batch_sensor_invalid_timings(poke_interval, timeout):
     print(
-        f"\nRunning test_batch_sensor_timeout with:\n"
+        f"\n\nRunning test_batch_sensor_invalid_timings with:\n"
         f"poke_interval={poke_interval}, timeout={timeout}"
     )
     with raises(AirflowException) as ae:
@@ -46,8 +46,8 @@ def test_batch_sensor_timeout_invalid(poke_interval, timeout):
             timeout=timeout,
         )
     print(
-        f"\n\nSet up the batch sensor with invalid timings, "
-        f"got the expected exception:\n<{ae.value}>"
+        f"Set up the batch sensor with invalid timings, "
+        f"got the expected exception:\n<{ae.value}>\n"
     )
 
 

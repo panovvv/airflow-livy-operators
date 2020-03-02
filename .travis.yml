@@ -9,6 +9,9 @@ cache: pip
 
 # How to build
 language: python
+python:
+  - "3.7"
+  - "3.8"
 os: linux
 install:
   - pip install tox==3.14.5

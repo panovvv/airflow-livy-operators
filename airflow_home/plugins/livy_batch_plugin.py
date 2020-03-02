@@ -69,7 +69,7 @@ class LivyBatchSensor(BaseSensorOperator):
         if poke_interval > timeout:
             raise AirflowException(
                 f"Poke interval {poke_interval} sec. is greater "
-                f"than the timeout value. Timeout won't work."
+                f"than the timeout value {timeout} sec. Timeout won't work."
             )
         super().__init__(
             poke_interval=poke_interval,
@@ -231,15 +231,15 @@ class LivyBatchOperator(BaseOperator):
         )
         try:
             batch_id = json.loads(response.content)["id"]
-            if not isinstance(batch_id, Number):
-                raise AirflowException(
-                    "ID of the created batch is not a number. "
-                    "Are you sure we're calling Livy API?"
-                )
-            self.batch_id = batch_id
         except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.id", response)
             raise AirflowBadRequest(ex)
+        if not isinstance(batch_id, Number):
+            raise AirflowException(
+                f"ID of the created batch is not a number ({batch_id}). "
+                "Are you sure we're calling Livy API?"
+            )
+        self.batch_id = batch_id
 
     def verify(self):
         app_id = self.get_spark_app_id(self.batch_id)

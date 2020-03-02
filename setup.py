@@ -14,5 +14,5 @@ setup(
     url="https://github.com/panovvv/airflow-livy-plugins",
     license="MIT License",
     packages=find_packages(),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )

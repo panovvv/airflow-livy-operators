@@ -1,6 +1,4 @@
 import json
-from json import JSONDecodeError
-from typing import Iterable, Mapping
 
 from airflow import AirflowException
 from airflow.exceptions import AirflowBadRequest
@@ -10,7 +8,7 @@ from pytest import mark, raises
 from requests import Response
 
 from airflow_home.plugins import LivyBatchOperator
-from tests.helpers import mock_http_calls
+from tests.helpers import find_json_in_args, mock_http_calls
 
 
 def test_jinja(dag):
@@ -48,18 +46,13 @@ def test_submit_batch_get_id(dag, mocker):
     assert op.batch_id == 123
 
 
-def find_json_in_args(args_list: Iterable, kwargs_map: Mapping):
-    if kwargs_map.get("data"):
-        return json.loads(kwargs_map["data"])
-    else:
-        for arg in args_list:
-            try:
-                return json.loads(arg)
-            except (JSONDecodeError, TypeError):
-                pass
-
-
 def test_submit_batch_params(dag, mocker):
+    http_conn_id_yarn = "http_conn_id_yarn"
+    http_conn_id_spark = "http_conn_id_spark"
+    http_conn_id_livy = "http_conn_id_livy"
+    timeout_minutes = 4
+    poll_period_sec = 5
+    verify_in = "yarn"
     op = LivyBatchOperator(
         file="file",
         proxy_user="proxy_user",
@@ -77,12 +70,12 @@ def test_submit_batch_params(dag, mocker):
         queue="queue",
         name="name",
         conf={"key1": "val1", "key2": 2},
-        timeout_minutes=4,
-        poll_period_sec=5,
-        verify_in="yarn",
-        http_conn_id_livy="http_conn_id_livy",
-        http_conn_id_spark="http_conn_id_spark",
-        http_conn_id_yarn="http_conn_id_yarn",
+        timeout_minutes=timeout_minutes,
+        poll_period_sec=poll_period_sec,
+        verify_in=verify_in,
+        http_conn_id_livy=http_conn_id_livy,
+        http_conn_id_spark=http_conn_id_spark,
+        http_conn_id_yarn=http_conn_id_yarn,
         task_id="test_submit_batch_params",
         dag=dag,
     )
@@ -92,6 +85,12 @@ def test_submit_batch_params(dag, mocker):
 
     op.submit_batch()
 
+    assert op.timeout_minutes == timeout_minutes
+    assert op.poll_period_sec == poll_period_sec
+    assert op.verify_in == verify_in
+    assert op.http_conn_id_livy == http_conn_id_livy
+    assert op.http_conn_id_spark == http_conn_id_spark
+    assert op.http_conn_id_yarn == http_conn_id_yarn
     expected_json = json.loads(
         """{
       "proxyUser": "proxy_user",
@@ -173,7 +172,7 @@ def test_submit_batch_malformed_json(dag, mocker):
 
 
 def test_submit_batch_string_id(dag, mocker):
-    op = LivyBatchOperator(task_id="test_submit_batch_invalid_json", dag=dag)
+    op = LivyBatchOperator(task_id="test_submit_batch_string_id", dag=dag)
     http_response = mock_http_calls(201, content=b'{"id":"unexpectedly, a string!"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowException) as ae:

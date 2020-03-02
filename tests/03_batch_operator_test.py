@@ -6,7 +6,8 @@ from airflow.models import Connection
 from pytest import mark, raises
 
 from airflow_home.plugins import LivyBatchOperator
-from tests.helpers import mock_livy_batch_responses
+from tests.helpers import MockedResponse
+from tests.mock_batches import mock_livy_batch_responses
 
 
 @responses.activate
@@ -15,9 +16,11 @@ def test_run_batch_successfully(dag, mocker):
         spill_logs=False, task_id="test_run_batch_successfully", dag=dag
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
+    submit_batch_spy = mocker.spy(op, "submit_batch")
     mock_livy_batch_responses(mocker)
     op.execute({})
 
+    submit_batch_spy.assert_called_once()
     # spill_logs is False and batch completed successfully, so we don't expect logs.
     spill_logs_spy.assert_not_called()
     op.spill_logs = True
@@ -49,10 +52,14 @@ def test_run_batch_error_before_batch_created(dag, mocker):
 
 @responses.activate
 @mark.parametrize("code", [404, 403, 500, 503, 504])
-def test_run_batch_exception_during_status_probing(dag, mocker, code):
-    op = LivyBatchOperator(spill_logs=True, task_id="test_run_batch", dag=dag)
+def test_run_batch_error_during_status_probing(dag, mocker, code):
+    op = LivyBatchOperator(
+        spill_logs=True, task_id="test_run_batch_error_during_status_probing", dag=dag,
+    )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
-    mock_livy_batch_responses(mocker, mock_get={code: f"Response from server:{code}"})
+    mock_livy_batch_responses(
+        mocker, mock_get=[MockedResponse(code, body=f"Response from server:{code}")]
+    )
     with raises(AirflowException) as ae:
         op.execute({})
     print(
@@ -89,7 +96,8 @@ def test_run_batch_no_appid(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
-        mocker, mock_get={200: {"state": "success", "appId": None}}
+        mocker,
+        mock_get=[MockedResponse(200, json_body={"state": "success", "appId": None})],
     )
     with raises(AirflowException) as ae:
         op.execute({})
@@ -101,7 +109,10 @@ def test_run_batch_no_appid(dag, mocker):
     spill_logs_spy.assert_called_once()
 
     mock_livy_batch_responses(
-        mocker, mock_get={200: {"state": "success", "noappId": "here"}}
+        mocker,
+        mock_get=[
+            MockedResponse(200, json_body={"state": "success", "noAppId": "here"})
+        ],
     )
     with raises(AirflowException) as ae:
         op.execute({})
@@ -123,12 +134,15 @@ def test_run_batch_verify_in_spark_failed(dag, mocker):
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
         mocker,
-        mock_spark={
-            200: [
-                {"jobId": 1, "status": "SUCCEEDED"},
-                {"jobId": 2, "status": "FAILED"},
-            ]
-        },
+        mock_spark=[
+            MockedResponse(
+                200,
+                json_body=[
+                    {"jobId": 1, "status": "SUCCEEDED"},
+                    {"jobId": 2, "status": "FAILED"},
+                ],
+            )
+        ],
     )
     with raises(AirflowException) as ae:
         op.execute({})
@@ -150,7 +164,7 @@ def test_run_batch_verify_in_spark_garbled(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
-        mocker, mock_spark={200: {"unparsable": "crap"}},
+        mocker, mock_spark=[MockedResponse(200, json_body={"unparseable": "obj"})],
     )
     with raises(AirflowException) as ae:
         op.execute({})
@@ -185,7 +199,8 @@ def test_run_batch_verify_in_yarn_garbled_response(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
-        mocker, mock_yarn={200: "<!DOCTYPE html><html>notjson</html>"}
+        mocker,
+        mock_yarn=[MockedResponse(200, body="<!DOCTYPE html><html>notjson</html>")],
     )
     with raises(AirflowException) as ae:
         op.execute({})
@@ -206,7 +221,8 @@ def test_run_batch_verify_in_yarn_failed(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
-        mocker, mock_yarn={200: {"app": {"finalStatus": "NOTGOOD"}}}
+        mocker,
+        mock_yarn=[MockedResponse(200, json_body={"app": {"finalStatus": "NOTGOOD"}})],
     )
     with raises(AirflowException) as ae:
         op.execute({})

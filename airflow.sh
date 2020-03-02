@@ -92,15 +92,15 @@ create_venv() {
 remove_trash() {
   find "${SCRIPT_DIR}/airflow_home" -mindepth 1 -maxdepth 1 \
     ! \( -name 'dags' -or -name 'plugins' -or -name '__init__.py' \) \
-    -delete
+    -exec rm -rv {} +
+  find "${SCRIPT_DIR}" -path "${SCRIPT_DIR}/venv" -prune -o -type d \
+    \( -name 'metastore_db' -or -name '.pytest_cache' -or -name '.tox' \
+    -or -name 'htmlcov' -or -name '*.egg-info' \
+    -or -name 'build' -or -name 'dist' \) -exec rm -rv {} +
   find "${SCRIPT_DIR}" -path "${SCRIPT_DIR}/venv" -prune -o \
-    \( -name 'metastore_db' -or -name 'derby.log' \
-    -or -name 'coverage.xml' -or -name '.coverage' -or -name 'htmlcov' \
-    -or -name 'build' -or -name 'dist' -or -name '*.egg-info' \) -delete
-  find "${SCRIPT_DIR}" -path "${SCRIPT_DIR}/venv" -prune -o \
-    \( -name '*.pyc' -or -name '*.pyo' -or -name '*~' \
-    -or -name '__pycache__' -or -name '.pytest_cache' -or -name '.tox' \) \
-    -delete
+    \( -name '*.pyc' -or -name '*.pyo' -or -name '*~' -or -name 'coverage.xml' \
+    -or -name '__pycache__' -or -name 'derby.log' -or -name '.coverage' \) \
+    -exec rm -rv {} +
   echo "All of the extra files had been deleted!"
 }
 
@@ -178,7 +178,10 @@ ci)
   create_venv
   . "${SCRIPT_DIR}/venv/bin/activate"
   cd "${SCRIPT_DIR}" || exit
-  pip install tox==3.14.5
+  if ! python -c "import tox" > /dev/null 2>&1
+  then
+    echo "pip install tox==3.14.5"
+  fi
   tox
   deactivate
   ;;
