@@ -1,5 +1,4 @@
 # Speed up the build
-sudo: false
 git:
   depth: false
 branches:

@@ -7,7 +7,7 @@ Plugins for Airflow to run Spark jobs via Livy:
 * Sessions,
 * Batches. This mode supports additional verification via Spark/YARN REST API.
 
-See [this blog post](https://www.shortn0tes.com/2019/08/airflow-spark-livy-sessions-batches.html "Blog post") for more information and detailed comparison of ways to run Spark jobs from Airflow.
+See [this blog post](https://www.shortn0tes.com/2020/03/airflow-livy-spark.html "Blog post") for more information and detailed comparison of ways to run Spark jobs from Airflow.
 
 ## Directories and files of interest
 * `airflow_home`: example DAGs and plugins for Airflow. Can be used as 
