@@ -15,8 +15,8 @@ try:
     # Import statement for Airflow when it loads new operators into airflow.operators
     from airflow.operators import LivySessionOperator
 except ImportError:
-    # Import statement for IDE with the local folder structur
-    from airflow_home.plugins.livy_session_plugin import LivySessionOperator
+    # Import statement for IDE with the local folder structure
+    from plugins.airflow_livy.session_plugin import LivySessionOperator
 
 dag = DAG(
     "01_session_example",

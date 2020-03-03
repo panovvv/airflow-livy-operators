@@ -3,7 +3,7 @@ from airflow.exceptions import AirflowBadRequest, AirflowSensorTimeout
 from airflow.hooks.http_hook import HttpHook
 from pytest import mark, raises
 
-from airflow_home.plugins import LivySessionCreationSensor
+from plugins.airflow_livy import LivySessionCreationSensor
 from tests.helpers import mock_http_calls
 
 

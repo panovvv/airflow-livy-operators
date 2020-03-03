@@ -5,7 +5,7 @@ with open("README.md") as fh:
 
 setup(
     name="airflow-livy-plugins",
-    version="0.1",
+    version="0.2",
     author="Vadim Panov",
     author_email="headcra6@gmail.com",
     description="Plugins for Airflow to run Spark jobs via Livy: sessions and batches",
@@ -13,6 +13,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/panovvv/airflow-livy-plugins",
     license="MIT License",
-    packages=["airflow_home.plugins"],
+    packages=["airflow_livy"],
+    package_dir={"": "plugins"},
     python_requires=">=3.7",
 )

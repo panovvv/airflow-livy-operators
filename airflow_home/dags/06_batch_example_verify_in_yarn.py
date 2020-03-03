@@ -8,11 +8,9 @@ from datetime import datetime
 from airflow import DAG
 
 try:
-    # Import statement for Airflow when it loads new operators into airflow.operators
     from airflow.operators import LivyBatchOperator
 except ImportError:
-    # Import statement for IDE with the local folder structure
-    from airflow_home.plugins.livy_batch_plugin import LivyBatchOperator
+    from plugins.airflow_livy.batch_plugin import LivyBatchOperator
 
 dag = DAG(
     "06_batch_example_verify_in_yarn",

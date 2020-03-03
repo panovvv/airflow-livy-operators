@@ -1,7 +1,7 @@
 from airflow import AirflowException
 from pytest import raises
 
-from airflow_home.plugins import LivySessionOperator
+from plugins.airflow_livy import LivySessionOperator
 
 
 def test_allowed_statement_kinds():

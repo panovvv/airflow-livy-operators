@@ -15,11 +15,9 @@ from airflow.operators.python_operator import PythonOperator
 from jinja2 import Template
 
 try:
-    # Import statement for Airflow when it loads new operators into airflow.operators
     from airflow.operators import LivySessionOperator
 except ImportError:
-    # Import statement for IDE with the local folder structure
-    from airflow_home.plugins.livy_session_plugin import LivySessionOperator
+    from plugins.airflow_livy.session_plugin import LivySessionOperator
 
 
 def read_code_from_file(task_instance, **context):

@@ -39,10 +39,29 @@ Airflow UI will be available at
 1. Ctrl+C to stop Airflow. Then `./airflow.sh down` to dispose of
 remaining Airflow processes (shouldn't be needed there if everything goes well).
 
+### ... use it in my project?
+```bash
+pip install airflow-livy-plugins
+```
+Then link or copy the plugin files into `$AIRFLOW_HOME/plugins` 
+(see how I do that in `./airflow.sh`). 
+They'll get loaded into Airflow via Plugin Manager automatically.
+This is how you import the plugins:
+```python
+from airflow.operators import LivySessionOperator
+from airflow.operators import LivyBatchOperator
+```
+Plugins are loaded at run-time so the imports above will look broken in your IDE,
+but will work fine in Airflow.
+Take a look at the sample DAGs to see my walkaround :)
 
-### ...set up development environment?
+### ... set up the development environment?
+Alright, you want to contribute and need to be able to run the stuff on your machine,
+as well as the usual niceness that comes with IDEs (debugging, syntax highlighting). How do I
 
-* run `/airflow.sh dev` to install all dev dependencies.
+* run `./airflow.sh dev` to install all dev dependencies.
+* `./airflow.sh updev` runs local Airflow with local plugins (as opposed to 
+pulling them from PyPi)
 * (Pycharm-specific) point PyCharm to your newly-created virtual environment: go to
 `"Preferences" -> "Project: airflow-livy-plugins" -> "Project interpreter", select
 "Existing environment"` and pick __python3__ executable from __venv__ folder

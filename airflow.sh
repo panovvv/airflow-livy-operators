@@ -16,7 +16,6 @@ init_dev() {
   else
     echo "Installing dev dependencies for the first time..."
     . "${SCRIPT_DIR}/venv/bin/activate"
-    python3 -m pip install --upgrade setuptools wheel
     python3 -m pip install -r "${SCRIPT_DIR}/requirements_dev.txt"
     cp "${SCRIPT_DIR}/requirements_dev.txt" "${SCRIPT_DIR}/venv/requirements_dev.txt"
     deactivate
@@ -92,25 +91,42 @@ create_venv() {
 
 remove_trash() {
   find "${SCRIPT_DIR}/airflow_home" -mindepth 1 -maxdepth 1 \
-    ! \( -name 'dags' -or -name 'plugins' -or -name '__init__.py' \) \
-    -exec rm -rv {} +
+    ! \( -name 'dags' -or -name '__init__.py' \) \
+    -exec rm -rvf {} +
   find "${SCRIPT_DIR}" -path "${SCRIPT_DIR}/venv" -prune -o -type d \
     \( -name 'metastore_db' -or -name '.pytest_cache' -or -name '.tox' \
     -or -name 'htmlcov' -or -name '*.egg-info' \
-    -or -name 'build' -or -name 'dist' \) -exec rm -rv {} +
+    -or -name 'build' -or -name 'dist' \) -exec rm -rvf {} +
   find "${SCRIPT_DIR}" -path "${SCRIPT_DIR}/venv" -prune -o \
     \( -name '*.pyc' -or -name '*.pyo' -or -name '*~' -or -name 'coverage.xml' \
     -or -name '__pycache__' -or -name 'derby.log' -or -name '.coverage' \) \
-    -exec rm -rv {} +
+    -exec rm -rvf {} +
   echo "All of the extra files had been deleted!"
+}
+
+link_local_plugins () {
+  rm -rf "${SCRIPT_DIR}/airflow_home/plugins"
+  mkdir "${SCRIPT_DIR}/airflow_home/plugins"
+  ln -snf "${SCRIPT_DIR}/plugins/"* "${SCRIPT_DIR}/airflow_home/plugins/"
+  echo "Linked local plugins from ${SCRIPT_DIR}/plugins/ to Airflow plugins folder!"
+}
+
+link_pypi_plugins () {
+  rm -rf "${SCRIPT_DIR}/airflow_home/plugins"
+  mkdir "${SCRIPT_DIR}/airflow_home/plugins"
+  ln -snf "${SCRIPT_DIR}/venv/lib/"python*"/site-packages/airflow_livy/"* \
+  "${SCRIPT_DIR}/airflow_home/plugins/"
+  echo "Linked PyPi plugins from ${SCRIPT_DIR}/venv/lib/"python*"/site-packages/airflow_livy/ to Airflow plugins folder!"
 }
 
 show_help() {
   echo "Options for just running the examples:"
-  echo "up         -   bring up Airflow at http://localhost:8888/admin/ to run test DAGs"
+  echo "up         -   bring up Airflow at http://localhost:8888/admin/ to run test DAGs."
+  echo "               Plugins are loaded from PyPi"
   echo "down       -   tear down Airflow"
   echo
   echo "Development options:"
+  echo "updev      -   same as 'up', but plugins are loaded from the local plugins/ directory"
   echo "cov        -   run tests and generate HTML coverage report."
   echo "lint       -   see what's wrong with the code style"
   echo "format     -   reformat code"
@@ -138,6 +154,10 @@ case "$1" in
 up)
   copy_batches
   create_venv
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  pip install airflow-livy-plugins==0.2
+  deactivate
+  link_pypi_plugins
   export_airflow_env
   init_airflow
   . "${SCRIPT_DIR}/venv/bin/activate"
@@ -151,6 +171,18 @@ down)
   ;;
 
 # Development options:
+
+updev)
+  copy_batches
+  create_venv
+  link_local_plugins
+  export_airflow_env
+  init_airflow
+  . "${SCRIPT_DIR}/venv/bin/activate"
+  airflow scheduler &
+  airflow webserver
+  deactivate
+  ;;
 
 cov)
   create_venv

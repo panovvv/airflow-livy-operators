@@ -5,7 +5,7 @@ from airflow.hooks.base_hook import BaseHook
 from airflow.models import Connection
 from pytest import mark, raises
 
-from airflow_home.plugins import LivyBatchOperator
+from plugins.airflow_livy import LivyBatchOperator
 from tests.helpers import MockedResponse
 from tests.mock_batches import mock_livy_batch_responses
 
