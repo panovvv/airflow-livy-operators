@@ -10,8 +10,10 @@ Plugins for Airflow to run Spark jobs via Livy:
 See [this blog post](https://www.shortn0tes.com/2020/03/airflow-livy-spark.html "Blog post") for more information and detailed comparison of ways to run Spark jobs from Airflow.
 
 ## Directories and files of interest
-* `airflow_home`: example DAGs and plugins for Airflow. Can be used as 
-Airflow home path.
+* `plugins`:  this one contains two plugins mentioned above.
+* `airflow_home`: example DAGs for Airflow. Can be used as 
+Airflow home path - when we use it as such we link there
+either `plugins` folder or the same plugins pulled from PyPi artifact.
 * `batches`: Spark jobs code, to be used in Livy batches.
 * `sessions`: (Optionally) templated Spark code for Livy sessions.
 * `airflow.sh`: helper shell script. Can be used to run sample DAGs,
@@ -24,27 +26,26 @@ Run it to find out what other commands are available.
 ### ...run the examples?
 Prerequisites:
 * Python 3. Make sure it's installed and in __$PATH__
+* Spark cluster with Livy. Where to get that? You can "mock" it on your machine with 
+[my Spark cluster on Docker Compose](https://github.com/panovvv/bigdata-docker-compose).
 
 Now, 
-1. Do you have a Spark cluster with Livy running somewhere?
-    1. *No*. Either get one, or "mock" it with 
-    [my Spark cluster on Docker Compose](https://github.com/panovvv/bigdata-docker-compose).
-    1. *Yes*. You're golden!
 1. __Optional - this step can be skipped if you're mocking a cluster on your
-machine__. Open *airflow.sh*. Inside `init_airflow ()` function you'll see Airflow
+machine__. Open *airflow.sh*. Inside `init_airflow()` function you'll see Airflow
 Connections for Livy, Spark and YARN. Redefine as appropriate.
 1. run `./airflow.sh up` to bring up the whole infrastructure. 
 Airflow UI will be available at
-[localhost:8080](http://localhost:8888 "Airflow UI").
+[localhost:8888](http://localhost:8888 "Airflow UI").
 1. Ctrl+C to stop Airflow. Then `./airflow.sh down` to dispose of
-remaining Airflow processes (shouldn't be needed there if everything goes well).
+remaining Airflow processes (shouldn't be required if everything goes well.
+Run this if you can't start Airflow again due to some non-informative errors) .
 
 ### ... use it in my project?
 ```bash
 pip install airflow-livy-plugins
 ```
 Then link or copy the plugin files into `$AIRFLOW_HOME/plugins` 
-(see how I do that in `./airflow.sh`). 
+(see how I do that in `./airflow.sh up/updev`). 
 They'll get loaded into Airflow via Plugin Manager automatically.
 This is how you import the plugins:
 ```python
@@ -53,7 +54,7 @@ from airflow.operators import LivyBatchOperator
 ```
 Plugins are loaded at run-time so the imports above will look broken in your IDE,
 but will work fine in Airflow.
-Take a look at the sample DAGs to see my walkaround :)
+Take a look at the sample DAGs to see my workaround for that.
 
 ### ... set up the development environment?
 Alright, you want to contribute and need to be able to run the stuff on your machine,
