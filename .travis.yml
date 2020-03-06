@@ -3,16 +3,25 @@ git:
   depth: false
 branches:
   only:
-  - "master"
+  - master
 cache: pip
 
 # How to build
 language: python
 python:
-  - "3.7"
-  - "3.8"
+- '3.7'
+- '3.8'
 os: linux
 install:
-  - pip install tox==3.14.5
+- pip install tox==3.14.5
 script:
-  - tox
+- tox
+
+# Deploy to PyPi on each version tag
+deploy:
+  provider: pypi
+  user: __token__
+  password:
+    secure: LjCmY1KS0avMPHuaAUI7KJfV0jyOEZyLXZXcCUiOzty7RR26XWu35R36O0SyZTL17L2NdGrfQFr2dumXaO5nzZcEwJMiOFJYV6s2VnxhfkObnO6LiMs8P39fOnX9msVozF2pTSGDH6u/zaNI5a5mhlid2NPkIeKFgkpe7TSLJ9SEcre3LIJIXOgH7g05Ft+9qlUWhG+j2WrCl6/SzS9uVx2foCH/5LS3c1+p6bOZTGObTjR+J/NOCc5S/ns9KK0e+L31TAJO0ZtRIDWed1c4iUzFh2liOXWC3UuBdrtTfTlhzY1nkikHPy59Zv+13fIo4+XqfaGcejdQylj3gaP9zjwuzQbz2V9bi0sbVrC6YywBOHQHCi03nno5qlUEcJzkTRZSu3PN9v+rx1LW5JGuQmBcJXHJq1lxiupPXS7+hWmGRaX+ROgifKs+pHtFdMVpk5FXyn6eRNI6z+AS3H8aE3sN7dm5UhkBXDlqeL1S9kXVDVR4pezpuWrIDXvf70sdN6lCx3dUBf82aTTkMRJsk5TgtVdoTaowo9OBygoWiL5UiPFIlFWUX7cwFOalc1ZQ2EbuT1Ky8AQU6Exhq3Y8JVSWq5BRWJv+yiwJsksDXUK7QkQC28u3h5iv6VH7Qk4lMc29tVNR5qOLbuo1smaev+uYyrAfM/RtjBsVeUhxqi8=
+  on:
+    tags: true
