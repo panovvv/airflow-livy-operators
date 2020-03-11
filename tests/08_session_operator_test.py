@@ -5,9 +5,9 @@ from airflow.hooks.base_hook import BaseHook
 from airflow.models import Connection
 from pytest import mark, raises
 
-from plugins.airflow_livy import LivySessionOperator
+from airflow_home.plugins.airflow_livy.session import LivySessionOperator
 from tests.helpers import MockedResponse
-from tests.mock_session import STATEMENT_ID, mock_livy_session_responses
+from tests.mock_sessions import STATEMENT_ID, mock_livy_session_responses
 
 
 @responses.activate

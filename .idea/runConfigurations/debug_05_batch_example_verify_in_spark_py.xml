@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="debug 05_batch_example_verify_in_spark.py" type="PythonConfigurationType" factoryName="Python">
-    <module name="airflow-livy-plugins" />
+    <module name="airflow-livy-operators" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>

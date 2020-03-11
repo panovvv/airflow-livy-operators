@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="debug 06_batch_example_verify_in_yarn.py" type="PythonConfigurationType" factoryName="Python">
-    <module name="airflow-livy-plugins" />
+    <module name="airflow-livy-operators" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>

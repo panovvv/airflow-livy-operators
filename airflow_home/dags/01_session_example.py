@@ -10,13 +10,21 @@ params dict contains variables to plug into code template.
 from datetime import datetime
 
 from airflow import DAG
+from airflow.models import Variable
 
-try:
-    # Import statement for Airflow when it loads new operators into airflow.operators
-    from airflow.operators import LivySessionOperator
-except ImportError:
-    # Import statement for IDE with the local folder structure
-    from plugins.airflow_livy.session_plugin import LivySessionOperator
+load_from = Variable.get("load_operators_from", "local")
+if load_from == "local":
+    try:
+        # Runtime import, local code
+        from airflow.operators import LivySessionOperator
+    except ImportError:
+        # Static import so that IDE sees it, also local code.
+        from airflow_home.plugins.airflow_livy.session import LivySessionOperator
+elif load_from == "pypi":
+    from airflow_livy.session import LivySessionOperator
+else:
+    raise ImportError(f"Can't load Livy operator from '{load_from}'")
+
 
 dag = DAG(
     "01_session_example",

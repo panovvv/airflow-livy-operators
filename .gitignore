@@ -11,10 +11,9 @@ venv/
 desktop.ini
 
 # Airflow stuff.
-# We don't include airflow_home/plugins as we symlink either
-# local folder or PyPi package into it.
 airflow_home/*
-!airflow_home/dags
+!airflow_home/dags/
+!airflow_home/plugins/
 !airflow_home/__init__.py
 
 # Those get created when you run Pyspark scripts locally

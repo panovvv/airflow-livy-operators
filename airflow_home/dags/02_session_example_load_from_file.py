@@ -14,10 +14,16 @@ from airflow.models import Variable
 from airflow.operators.python_operator import PythonOperator
 from jinja2 import Template
 
-try:
-    from airflow.operators import LivySessionOperator
-except ImportError:
-    from plugins.airflow_livy.session_plugin import LivySessionOperator
+load_from = Variable.get("load_operators_from", "local")
+if load_from == "local":
+    try:
+        from airflow.operators import LivySessionOperator
+    except ImportError:
+        from airflow_home.plugins.airflow_livy.session import LivySessionOperator
+elif load_from == "pypi":
+    from airflow_livy.session import LivySessionOperator
+else:
+    raise ImportError(f"Can't load Livy operator from '{load_from}'")
 
 
 def read_code_from_file(task_instance, **context):

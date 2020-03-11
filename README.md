@@ -1,22 +1,20 @@
-# Airflow Livy Plugins
+# Airflow Livy Operators
 
-[![Build Status](https://travis-ci.org/panovvv/airflow-livy-plugins.svg?branch=master)](https://travis-ci.org/panovvv/airflow-livy-plugins)
-[![Code coverage](https://codecov.io/gh/panovvv/airflow-livy-plugins/branch/master/graph/badge.svg)](https://codecov.io/gh/panovvv/airflow-livy-plugins)
+[![Build Status](https://travis-ci.org/panovvv/airflow-livy-operators.svg?branch=master)](https://travis-ci.org/panovvv/airflow-livy-operators)
+[![Code coverage](https://codecov.io/gh/panovvv/airflow-livy-operators/branch/master/graph/badge.svg)](https://codecov.io/gh/panovvv/airflow-livy-operators)
 
-Plugins for Airflow to run Spark jobs via Livy: 
+Lets Airflow DAGs run Spark jobs via Livy:
 * Sessions,
 * Batches. This mode supports additional verification via Spark/YARN REST API.
 
 See [this blog post](https://www.shortn0tes.com/2020/03/airflow-livy-spark.html "Blog post") for more information and detailed comparison of ways to run Spark jobs from Airflow.
 
 ## Directories and files of interest
-* `plugins`:  this one contains two plugins mentioned above.
-* `airflow_home`: example DAGs for Airflow. Can be used as 
-Airflow home path - when we use it as such we link there
-either `plugins` folder or the same plugins pulled from PyPi artifact.
+* `airflow_home/plugins`: Airflow Livy operators' code.
+* `airflow_home/dags`: example DAGs for Airflow.
 * `batches`: Spark jobs code, to be used in Livy batches.
 * `sessions`: (Optionally) templated Spark code for Livy sessions.
-* `airflow.sh`: helper shell script. Can be used to run sample DAGs,
+* `helper.sh`: helper shell script. Can be used to run sample DAGs,
 prep development environment and more.
 Run it to find out what other commands are available.
 
@@ -31,46 +29,40 @@ Prerequisites:
 
 Now, 
 1. __Optional - this step can be skipped if you're mocking a cluster on your
-machine__. Open *airflow.sh*. Inside `init_airflow()` function you'll see Airflow
+machine__. Open *helper.sh*. Inside `init_airflow()` function you'll see Airflow
 Connections for Livy, Spark and YARN. Redefine as appropriate.
-1. run `./airflow.sh up` to bring up the whole infrastructure. 
+1. run `./helper.sh up` to bring up the whole infrastructure. 
 Airflow UI will be available at
 [localhost:8888](http://localhost:8888 "Airflow UI").
-1. Ctrl+C to stop Airflow. Then `./airflow.sh down` to dispose of
+1. Ctrl+C to stop Airflow. Then `./helper.sh down` to dispose of
 remaining Airflow processes (shouldn't be required if everything goes well.
 Run this if you can't start Airflow again due to some non-informative errors) .
 
 ### ... use it in my project?
 ```bash
-pip install airflow-livy-plugins
+pip install airflow-livy-operators
 ```
-Then link or copy the plugin files into `$AIRFLOW_HOME/plugins` 
-(see how I do that in `./airflow.sh up/updev`). 
-They'll get loaded into Airflow via Plugin Manager automatically.
-This is how you import the plugins:
+This is how you import them:
 ```python
-from airflow.operators import LivySessionOperator
-from airflow.operators import LivyBatchOperator
+from airflow_livy.session import LivySessionOperator
+from airflow_livy.batch import LivyBatchOperator
 ```
-Plugins are loaded at run-time so the imports above will look broken in your IDE,
-but will work fine in Airflow.
-Take a look at the sample DAGs to see my workaround for that.
 
 ### ... set up the development environment?
 Alright, you want to contribute and need to be able to run the stuff on your machine,
-as well as the usual niceness that comes with IDEs (debugging, syntax highlighting). How do I
+as well as the usual niceness that comes with IDEs (debugging, syntax highlighting).
 
-* run `./airflow.sh dev` to install all dev dependencies.
-* `./airflow.sh updev` runs local Airflow with local plugins (as opposed to 
-pulling them from PyPi)
+* run `./helper.sh dev` to install all dev dependencies.
+* `./helper.sh updev` runs Airflow with local operators' code (as opposed to 
+pulling them from PyPi). Useful for development.
 * (Pycharm-specific) point PyCharm to your newly-created virtual environment: go to
-`"Preferences" -> "Project: airflow-livy-plugins" -> "Project interpreter", select
+`"Preferences" -> "Project: airflow-livy-operators" -> "Project interpreter", select
 "Existing environment"` and pick __python3__ executable from __venv__ folder
 (__venv/bin/python3__)
-* `./airflow.sh cov` - run tests with coverage report 
+* `./helper.sh cov` - run tests with coverage report 
 (will be saved to *htmlcov/*).
-* `./airflow.sh lint` - highlight code style errors.
-* `./airflow.sh format` to reformat all code 
+* `./helper.sh lint` - highlight code style errors.
+* `./helper.sh format` to reformat all code 
 ([Black](https://black.readthedocs.io/en/stable/) + 
 [isort](https://readthedocs.org/projects/isort/))
 
@@ -98,5 +90,5 @@ python ./batches/join_2_files.py \
 ```
 
 ## TODO
-* airflow.sh - replace with modern tools (e.g. pipenv + Docker image)
+* helper.sh - replace with modern tools (e.g. pipenv + Docker image)
 * Disable some of flake8 flags for cleaner code

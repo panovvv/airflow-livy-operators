@@ -13,10 +13,10 @@ pytest==5.3.5
 
 # Unit tests: mocking
 pytest-mock==2.0.0
-responses==0.10.11
+responses==0.10.12
 
 # Unit test verification: show difference between expected and actual files
-deepdiff==4.2.0
+deepdiff==4.3.0
 
 # Code coverage
 pytest-cov==2.8.1
@@ -42,6 +42,6 @@ flake8-quotes==2.1.1
 flake8-string-format==0.3.0
 
 # Publish to PyPi
-setuptools==45.2.0
+setuptools==46.0.0
 wheel==0.34.2
 twine==3.1.1

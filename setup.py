@@ -4,16 +4,16 @@ with open("README.md") as fh:
     long_description = fh.read()
 
 setup(
-    name="airflow-livy-plugins",
-    version="0.2",
+    name="airflow-livy-operators",
+    version="0.3",
     author="Vadim Panov",
     author_email="headcra6@gmail.com",
-    description="Plugins for Airflow to run Spark jobs via Livy: sessions and batches",
+    description="Lets Airflow DAGs run Spark jobs via Livy: sessions and/or batches.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/panovvv/airflow-livy-plugins",
+    url="https://github.com/panovvv/airflow-livy-operators",
     license="MIT License",
     packages=["airflow_livy"],
-    package_dir={"": "plugins"},
+    package_dir={"airflow_livy": "airflow_home/plugins/airflow_livy"},
     python_requires=">=3.7",
 )

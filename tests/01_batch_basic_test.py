@@ -7,7 +7,7 @@ from deepdiff import DeepDiff
 from pytest import mark, raises
 from requests import Response
 
-from plugins.airflow_livy import LivyBatchOperator
+from airflow_home.plugins.airflow_livy.batch import LivyBatchOperator
 from tests.helpers import find_json_in_args, mock_http_calls
 
 

@@ -1,27 +1,26 @@
 # Speed up the build
 git:
   depth: false
-branches:
-  only:
-  - master
 cache: pip
 
 # How to build
 language: python
 python:
-- '3.7'
-- '3.8'
+  - '3.7'
+  - '3.8'
 os: linux
 install:
-- pip install tox==3.14.5
+  - pip install tox==3.14.5
 script:
-- tox
+  - tox
 
 # Deploy to PyPi on each version tag
 deploy:
   provider: pypi
   user: __token__
   password:
-    secure: LjCmY1KS0avMPHuaAUI7KJfV0jyOEZyLXZXcCUiOzty7RR26XWu35R36O0SyZTL17L2NdGrfQFr2dumXaO5nzZcEwJMiOFJYV6s2VnxhfkObnO6LiMs8P39fOnX9msVozF2pTSGDH6u/zaNI5a5mhlid2NPkIeKFgkpe7TSLJ9SEcre3LIJIXOgH7g05Ft+9qlUWhG+j2WrCl6/SzS9uVx2foCH/5LS3c1+p6bOZTGObTjR+J/NOCc5S/ns9KK0e+L31TAJO0ZtRIDWed1c4iUzFh2liOXWC3UuBdrtTfTlhzY1nkikHPy59Zv+13fIo4+XqfaGcejdQylj3gaP9zjwuzQbz2V9bi0sbVrC6YywBOHQHCi03nno5qlUEcJzkTRZSu3PN9v+rx1LW5JGuQmBcJXHJq1lxiupPXS7+hWmGRaX+ROgifKs+pHtFdMVpk5FXyn6eRNI6z+AS3H8aE3sN7dm5UhkBXDlqeL1S9kXVDVR4pezpuWrIDXvf70sdN6lCx3dUBf82aTTkMRJsk5TgtVdoTaowo9OBygoWiL5UiPFIlFWUX7cwFOalc1ZQ2EbuT1Ky8AQU6Exhq3Y8JVSWq5BRWJv+yiwJsksDXUK7QkQC28u3h5iv6VH7Qk4lMc29tVNR5qOLbuo1smaev+uYyrAfM/RtjBsVeUhxqi8=
+    secure: hoAJ+R8DpGu2WL0qASTOri8y1MwCCb/UI97OzUzQqdlZzxjjQuiZSMuiWhanq7bve/9Gsv5ZN9EKVskLOdmJr8xlhlCQP9uIk3ExTxCIgv0R0dhjw9QgCXr3FuN7aUxsLpxJ23Ttx12tY6OBAP63L7C2zzm6Y54auxQViqGRnd/PerKMd0vqKbqSzXSFUKO5tL5Vp9FsuwSOXZyyKjif2mzvWqXGl2wHxk911WTlqOAGRzhN1BMGJ1TETgvagtmF9gmqy3WMqaY5uSMs4iw3+G7gs3ofefc2hGJzKCM+TrDo2ssIWbQzaT4Hhmdt0kGb5iAKBm8Wwf9RaG5dSRJm/9VQGWbEQcDdLEuidkR1JNwSX3joc3Bd5nVXM6R85a28k0kr5aLN64vhlIARNAq+ca5toqegXenx6MdOydti9hB2Hq80LmhsumtakSrGATTHo9IZ1wlNHPUYKUE2ERYPpyKAf8gByFNHlx4Z+3Lqy3o3G+zZqUZ3aeMwRikKln8lZfp0tkKdXMsEieRIBF6C6zOOIPIMHHcU6lDhyez7jhxNBaNkNWymofTVoUO7754LvSXwxMAu/dZ1YcXFiTyg4w+OZ4NNN0K7zU3eEHeYhMRxczLNf1kMgZ4M81RSI76qrlykxb89zGXrKTltAXhRtrNtC8nPtyrQPxIwuq/EbMQ=
+  distributions: sdist bdist_wheel
+  skip_existing: true
   on:
     tags: true
