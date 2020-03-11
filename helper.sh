@@ -76,6 +76,7 @@ export_airflow_env_vars() {
 init_airflow() {
   if [ ! -e "${SCRIPT_DIR}/airflow_home/airflow.db" ]; then
     . "${SCRIPT_DIR}/venv/bin/activate"
+    _echo_color yellow "Initializing Airflow..."
     airflow initdb
     airflow variables -s session_files_path "${SCRIPT_DIR}/sessions"
     airflow variables -s batch_files_path "${SCRIPT_DIR}/batches"
@@ -157,8 +158,8 @@ up)
   export_airflow_env_vars
   init_airflow
   . "${SCRIPT_DIR}/venv/bin/activate"
-  pip install airflow-livy-plugins==0.3
-  airflow variables -s load_operators_from "pipy"
+  pip install airflow-livy-operators==0.3
+  airflow variables -s load_operators_from "pypi"
   _echo_color cyan "Running Airflow..."
   airflow scheduler &
   airflow webserver
