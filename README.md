@@ -13,7 +13,8 @@ See [this blog post](https://www.shortn0tes.com/2020/03/airflow-livy-spark.html 
 * `airflow_home/plugins`: Airflow Livy operators' code.
 * `airflow_home/dags`: example DAGs for Airflow.
 * `batches`: Spark jobs code, to be used in Livy batches.
-* `sessions`: (Optionally) templated Spark code for Livy sessions.
+* `sessions`: Spark code for Livy sessions. You can add templates
+to files' contents in order to pass parameters into it.
 * `helper.sh`: helper shell script. Can be used to run sample DAGs,
 prep development environment and more.
 Run it to find out what other commands are available.
@@ -47,6 +48,7 @@ This is how you import them:
 from airflow_livy.session import LivySessionOperator
 from airflow_livy.batch import LivyBatchOperator
 ```
+See sample DAGs under `airflow_home/dags` to learn how to use the operators.
 
 ### ... set up the development environment?
 Alright, you want to contribute and need to be able to run the stuff on your machine,
@@ -62,9 +64,10 @@ pulling them from PyPi). Useful for development.
 * `./helper.sh cov` - run tests with coverage report 
 (will be saved to *htmlcov/*).
 * `./helper.sh lint` - highlight code style errors.
-* `./helper.sh format` to reformat all code 
-([Black](https://black.readthedocs.io/en/stable/) + 
+* `./helper.sh format` to reformat all code.
+(This project relies on [Black](https://black.readthedocs.io/en/stable/) + 
 [isort](https://readthedocs.org/projects/isort/))
+* `./helper.sh pypi` - generate the package for PyPi.
 
 ### ... debug?
 
