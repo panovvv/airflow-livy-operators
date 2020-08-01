@@ -62,7 +62,7 @@ df.show()
 
 sparkr_code = """
 df <- as.DataFrame(
-    list("{{ params.your_number }}", "{{ run_id }}", "Three", "Four", 
+    list("{{ params.your_number }}", "{{ run_id }}", "Three", "Four",
     "This was R code"), "{{ params.your_string }}")
 head(df)
 """

@@ -6,42 +6,42 @@ pyspark-stubs==2.4.0.post7
 
 # Unified testing: run tests, linting and code coverage report with one command.
 # CI uses that to check the build.
-tox==3.14.5
+tox==3.18.1
 
 # Unit tests
-pytest==5.3.5
+pytest==6.0.1
 
 # Unit tests: mocking
-pytest-mock==2.0.0
-responses==0.10.12
+pytest-mock==3.2.0
+responses==0.10.15
 
 # Unit test verification: show difference between expected and actual files
-deepdiff==4.3.0
+deepdiff==5.0.2
 
 # Code coverage
-pytest-cov==2.8.1
-codecov==2.0.16
+pytest-cov==2.10.0
+codecov==2.1.8
 
 # Code formatting
 black==19.10b0
-isort==4.3.21
+isort==4.3.5
 
 # Pre-commit hook to check (and reformat if needed) code on each commit
-pre-commit==2.1.1
+pre-commit==2.6.0
 
 # Code linting
-flake8==3.7.9
+flake8==3.8.3
 flake8-blind-except==0.1.1
 flake8-bugbear==20.1.4
-flake8-builtins==1.4.2
-flake8-comprehensions==3.2.2
+flake8-builtins==1.5.3
+flake8-comprehensions==3.2.3
 flake8-debugger==3.2.1
 flake8-docstrings==1.5.0
-flake8-isort==2.8.0
-flake8-quotes==2.1.1
+flake8-isort==3.0.1
+flake8-quotes==3.2.0
 flake8-string-format==0.3.0
 
 # Publish to PyPi
-setuptools==46.0.0
+setuptools==49.2.0
 wheel==0.34.2
-twine==3.1.1
+twine==3.2.0

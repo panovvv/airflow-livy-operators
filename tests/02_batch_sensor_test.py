@@ -87,7 +87,7 @@ def test_batch_sensor_invalid_states(dag, mocker, state):
 
 def test_batch_sensor_malformed_json(mocker):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_malformed_json")
-    http_response = mock_http_calls(200, content=f'{{"id": 2, "state": }}')
+    http_response = mock_http_calls(200, content='{{"id": 2, "state": }}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as bre:
         sen.poke({})

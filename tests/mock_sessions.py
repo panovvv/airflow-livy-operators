@@ -2,7 +2,7 @@ from typing import Iterable
 from unittest.mock import Mock
 
 import responses
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.http_hook import HttpHook
 from airflow.models import Connection
 
 from tests.helpers import LogMocker, MockedResponse
@@ -31,9 +31,7 @@ def mock_livy_session_responses(
     _mock_log_response(log_override_response, log_lines)
     _mock_delete_response(mock_delete)
     mocker.patch.object(
-        BaseHook,
-        "_get_connections_from_db",
-        return_value=[Connection(host=HOST, port=PORT)],
+        HttpHook, "get_connection", return_value=Connection(host=HOST, port=PORT),
     )
 
 

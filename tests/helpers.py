@@ -46,7 +46,7 @@ class LogMocker:
         self.job_id = job_id
 
     def mock_logs(self, request):
-        req_line = int(request.params[f"/{self.job_type}/{self.job_id}/log?from"])
+        req_line = int(request.params["from"])
         req_size = int(request.params["size"])
         line_from = req_line if req_line < self.lines else self.lines - 1
         req_to = line_from + req_size

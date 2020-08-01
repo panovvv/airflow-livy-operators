@@ -1,7 +1,7 @@
 import requests
 import responses
 from airflow import AirflowException
-from airflow.hooks.base_hook import BaseHook
+from airflow.hooks.http_hook import HttpHook
 from airflow.models import Connection
 from pytest import mark, raises
 
@@ -36,9 +36,7 @@ def test_run_batch_error_before_batch_created(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mocker.patch.object(
-        BaseHook,
-        "_get_connections_from_db",
-        return_value=[Connection(host="HOST", port=123)],
+        HttpHook, "get_connection", return_value=Connection(host="HOST", port=123),
     )
     with raises(requests.exceptions.ConnectionError) as ae:
         op.execute({})
