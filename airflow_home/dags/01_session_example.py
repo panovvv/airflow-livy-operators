@@ -39,6 +39,7 @@ dag = DAG(
 scala_code = """
 spark.range(1000 * 1000 * {{ params.your_number }}).count()
 val df = Seq(
+  ("This was Scala code", 0),
   ("One", 1),
   ("Two", 2),
   ("Three", 3),
@@ -53,7 +54,7 @@ import sys
 print(sys.version)
 spark.range(1000 * 1000 * {{params.your_number}}).count()
 df = sqlContext.createDataFrame(
-    [("One", 1), ("Two", 2), ("Three", 3), ("Four", 4)],
+    [("This was Python code", 0), ("One", 1), ("Two", 2), ("Three", 3), ("Four", 4)],
     ("{{ params.your_string }}", "{{ run_id }}"),
 )
 df.show()
@@ -61,13 +62,18 @@ df.show()
 
 sparkr_code = """
 df <- as.DataFrame(
-    list("{{ params.your_number }}", "{{ run_id }}", "Three", "Four"),
-    "{{ params.your_string }}")
+    list("{{ params.your_number }}", "{{ run_id }}", "Three", "Four", 
+    "This was R code"), "{{ params.your_string }}")
 head(df)
 """
 
 sql_code = """
-SELECT CONCAT('{{ params.your_string }}', ' in task instance ', '{{ run_id }}')
+SELECT CONCAT(
+  '{{ params.your_string }}',
+  ' in task instance ',
+  '{{ run_id }}',
+  ' - this was SQL query'
+)
 """
 
 # See the results of each statement's executions under "Logs" tab of the task.

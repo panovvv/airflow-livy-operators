@@ -25,13 +25,18 @@ Run it to find out what other commands are available.
 ### ...run the examples?
 Prerequisites:
 * Python 3. Make sure it's installed and in __$PATH__
-* Spark cluster with Livy. Where to get that? You can "mock" it on your machine with 
+* Spark cluster with Livy. I heavily recommend you "mock" one on your machine with 
 [my Spark cluster on Docker Compose](https://github.com/panovvv/bigdata-docker-compose).
 
 Now, 
 1. __Optional - this step can be skipped if you're mocking a cluster on your
 machine__. Open *helper.sh*. Inside `init_airflow()` function you'll see Airflow
 Connections for Livy, Spark and YARN. Redefine as appropriate.
+1. Define the way the sample batch files from this repo are delivered to a cluster:
+    1. if you're using a docker-compose cluster: redefine the BATCH_DIR variable 
+    as appropriate. 
+    1. if you're using your own cluster: modify the `copy_batches()` function so that it
+    delivers the files to a place accessible by your cluster (could be `aws s3 cp` etc.)
 1. run `./helper.sh up` to bring up the whole infrastructure. 
 Airflow UI will be available at
 [localhost:8888](http://localhost:8888 "Airflow UI").

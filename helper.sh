@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Change this to your locally-accessible directory where you want to copy batches
+# for the cluster to see and use them.
+# I'm using this to mount them to my docker-compose based cluster.
+BATCH_DIR="$HOME/personal/bigdata-docker-compose/data/batches/"
+
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 
 _echo_color() {
@@ -100,10 +105,9 @@ init_airflow() {
 }
 
 copy_batches() {
-  TO_DIR="$HOME/data/vpanov/bigdata-docker-compose/data/batches/"
-  _echo_color yellow "Copying the batch files from ${SCRIPT_DIR}/batches/ to ${TO_DIR}"
-  rsync -arv "${SCRIPT_DIR}"/batches/*.py "${TO_DIR}"
-  _echo_color green "Copied the batch files to ${TO_DIR}"
+  _echo_color yellow "Copying the batch files from ${SCRIPT_DIR}/batches/ to ${BATCH_DIR}"
+  rsync -arv "${SCRIPT_DIR}"/batches/*.py "${BATCH_DIR}"
+  _echo_color green "Copied the batch files to ${BATCH_DIR}"
 }
 
 remove_trash() {
