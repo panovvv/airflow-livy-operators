@@ -17,7 +17,7 @@ if load_from == "local":
 elif load_from == "pypi":
     from airflow_livy.batch import LivyBatchOperator
 else:
-    raise ImportError(f"Can't load Livy operator from '{load_from}'")
+    raise ImportError("Can't load Livy operator from '{load_from}'".format(load_from=load_from))
 
 dag = DAG(
     "05_batch_example_verify_in_spark",

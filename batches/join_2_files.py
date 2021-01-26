@@ -101,7 +101,7 @@ file1_df_params = {
     "header": args.file1_header,
     "schema": args.file1_schema,
 }
-print(f"File 1 dataframe parameters:\n{json.dumps(file1_df_params, indent=2)}")
+print("File 1 dataframe parameters:\n{params}".format(params=json.dumps(file1_df_params, indent=2)))
 file1_df = spark.read.csv(**file1_df_params)
 file1_df.createOrReplaceTempView("file1")
 
@@ -114,17 +114,17 @@ file2_df_params = {
     "header": args.file2_header,
     "schema": args.file2_schema,
 }
-print(f"File 2 dataframe parameters:\n{json.dumps(file2_df_params, indent=2)}")
+print("File 2 dataframe parameters:\n{params}".format(params=json.dumps(file2_df_params, indent=2)))
 file2_df = spark.read.csv(**file2_df_params)
 file2_df.createOrReplaceTempView("file2")
 
-sql = f"""
+sql = """
 SELECT
-    {args.output_columns}
+    {output_columns}
 FROM file1
-JOIN file2 ON file1.{args.file1_join_column} = file2.{args.file2_join_column}
-"""
-print(f"SQL query:\n{sql}")
+JOIN file2 ON file1.{file1_join_column} = file2.{file2_join_column}
+""".format(output_columns=args.output_columns, file1_join_column=args.file1_join_column, file2_join_column=args.file2_join_column)
+print("SQL query:\n{sql}".format(sql=sql))
 output = spark.sql(sql)
 
 output.show(50)

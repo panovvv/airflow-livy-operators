@@ -44,7 +44,7 @@ LOG_PAGE_LINES = 100
 def log_response_error(lookup_path, response, batch_id=None):
     msg = "Can not parse JSON response."
     if batch_id is not None:
-        msg += f" Batch id={batch_id}."
+        msg += " Batch id={batch_id}.".format(batch_id=batch_id)
     try:
         pp_response = (
             json.dumps(json.loads(response.content), indent=2)
@@ -53,7 +53,8 @@ def log_response_error(lookup_path, response, batch_id=None):
         )
     except AttributeError:
         pp_response = json.dumps(response, indent=2)
-    msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
+    msg += "\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"\
+        .format(lookup_path=lookup_path, pp_response=pp_response)
     logging.error(msg)
 
 
@@ -70,13 +71,15 @@ class LivyBatchSensor(BaseSensorOperator):
     ):
         if poke_interval < 1:
             raise AirflowException(
-                f"Poke interval {poke_interval} sec. is too small, "
-                f"this will result in too frequent API calls"
+                "Poke interval {poke_interval} sec. is too small, "
+                "this will result in too frequent API calls"
+                    .format(poke_interval=poke_interval)
             )
         if poke_interval > timeout:
             raise AirflowException(
-                f"Poke interval {poke_interval} sec. is greater "
-                f"than the timeout value {timeout} sec. Timeout won't work."
+                "Poke interval {poke_interval} sec. is greater "
+                "than the timeout value {timeout} sec. Timeout won't work."
+                    .format(poke_interval=poke_interval, timeout=timeout)
             )
         super().__init__(
             poke_interval=poke_interval,
@@ -89,8 +92,8 @@ class LivyBatchSensor(BaseSensorOperator):
         self.http_conn_id = http_conn_id
 
     def poke(self, context):
-        logging.info(f"Getting batch {self.batch_id} status...")
-        endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
+        logging.info("Getting batch {batch_id} status...".format(batch_id=self.batch_id))
+        endpoint = "{LIVY_ENDPOINT}/{batch_id}".format(LIVY_ENDPOINT=LIVY_ENDPOINT, batch_id=self.batch_id)
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
         try:
             state = json.loads(response.content)["state"]
@@ -99,13 +102,15 @@ class LivyBatchSensor(BaseSensorOperator):
             raise AirflowBadRequest(ex)
         if state in VALID_BATCH_STATES:
             logging.info(
-                f"Batch {self.batch_id} has not finished yet (state is '{state}')"
+                "Batch {batch_id} has not finished yet (state is '{state}')"
+                    .format(batch_id=self.batch_id, state=state)
             )
             return False
         if state == "success":
-            logging.info(f"Batch {self.batch_id} has finished successfully!")
+            logging.info("Batch {batch_id} has finished successfully!".format(batch_id=self.batch_id))
             return True
-        raise AirflowException(f"Batch {self.batch_id} failed with state '{state}'")
+        raise AirflowException("Batch {batch_id} failed with state '{state}'"
+                               .format(batch_id=self.batch_id, state=state))
 
 
 class LivyBatchOperator(BaseOperator):
@@ -138,7 +143,7 @@ class LivyBatchOperator(BaseOperator):
         http_conn_id_yarn="yarn",
         spill_logs=True,
         *args,
-        **kwargs,
+        **kwargs
     ):
         super(LivyBatchOperator, self).__init__(*args, **kwargs)
         self.file = file
@@ -163,8 +168,9 @@ class LivyBatchOperator(BaseOperator):
             self.verify_in = verify_in
         else:
             raise AirflowException(
-                f"Can not create batch operator with verification method "
-                f"'{verify_in}'!\nAllowed methods: {VERIFICATION_METHODS}"
+                "Can not create batch operator with verification method "
+                "'{verify_in}'!\nAllowed methods: {VERIFICATION_METHODS}"
+                    .format(verify_in=verify_in, VERIFICATION_METHODS=VERIFICATION_METHODS)
             )
         self.http_conn_id_livy = http_conn_id_livy
         self.http_conn_id_spark = http_conn_id_spark
@@ -175,7 +181,7 @@ class LivyBatchOperator(BaseOperator):
     def execute(self, context):
         try:
             self.submit_batch()
-            logging.info(f"Batch successfully submitted with id = {self.batch_id}.")
+            logging.info("Batch successfully submitted with id = {batch_id}.".format(batch_id=self.batch_id))
             LivyBatchSensor(
                 self.batch_id,
                 task_id=self.task_id,
@@ -185,8 +191,9 @@ class LivyBatchOperator(BaseOperator):
             ).execute(context)
             if self.verify_in in VERIFICATION_METHODS:
                 logging.info(
-                    f"Additionally verifying status for batch id {self.batch_id} "
-                    f"via {self.verify_in}..."
+                    "Additionally verifying status for batch id {batch_id} "
+                    "via {verify_in}..."
+                        .format(batch_id=self.batch_id, verify_in=self.verify_in)
                 )
                 self.verify()
         except Exception:
@@ -223,8 +230,9 @@ class LivyBatchOperator(BaseOperator):
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
         logging.info(
-            f"Submitting the batch to Livy... "
-            f"Payload:\n{json.dumps(payload, indent=2)}"
+            "Submitting the batch to Livy... "
+            "Payload:\n{payload}"
+                .format(payload=json.dumps(payload, indent=2))
         )
         response = HttpHook(http_conn_id=self.http_conn_id_livy).run(
             LIVY_ENDPOINT, json.dumps(payload), headers
@@ -236,25 +244,27 @@ class LivyBatchOperator(BaseOperator):
             raise AirflowBadRequest(ex)
         if not isinstance(batch_id, Number):
             raise AirflowException(
-                f"ID of the created batch is not a number ({batch_id}). "
+                "ID of the created batch is not a number ({batch_id}). "
                 "Are you sure we're calling Livy API?"
+                    .format(batch_id=batch_id)
             )
         self.batch_id = batch_id
 
     def verify(self):
         app_id = self.get_spark_app_id(self.batch_id)
         if app_id is None:
-            raise AirflowException(f"Spark appId was null for batch {self.batch_id}")
-        logging.info(f"Found app id '{app_id}' for batch id {self.batch_id}.")
+            raise AirflowException("Spark appId was null for batch {batch_id}".format(batch_id=self.batch_id))
+        logging.info("Found app id '{app_id}' for batch id {batch_id}.".format(app_id=app_id, batch_id=self.batch_id))
         if self.verify_in == "spark":
             self.check_spark_app_status(app_id)
         else:
             self.check_yarn_app_status(app_id)
-        logging.info(f"App '{app_id}' associated with batch {self.batch_id} completed!")
+        logging.info("App '{app_id}' associated with batch {self.batch_id} completed!"
+                     .format(app_id=app_id, batch_id=self.batch_id))
 
     def get_spark_app_id(self, batch_id):
-        logging.info(f"Getting Spark app id from Livy API for batch {batch_id}...")
-        endpoint = f"{LIVY_ENDPOINT}/{batch_id}"
+        logging.info("Getting Spark app id from Livy API for batch {batch_id}...".format(batch_id=batch_id))
+        endpoint = "{LIVY_ENDPOINT}/{batch_id}".format(LIVY_ENDPOINT=LIVY_ENDPOINT, batch_id=batch_id)
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id_livy).run(
             endpoint
         )
@@ -265,8 +275,8 @@ class LivyBatchOperator(BaseOperator):
             raise AirflowBadRequest(ex)
 
     def check_spark_app_status(self, app_id):
-        logging.info(f"Getting app status (id={app_id}) from Spark REST API...")
-        endpoint = f"{SPARK_ENDPOINT}/{app_id}/jobs"
+        logging.info("Getting app status (id={app_id}) from Spark REST API...".format(app_id=app_id))
+        endpoint = "{SPARK_ENDPOINT}/{app_id}/jobs".format(SPARK_ENDPOINT=SPARK_ENDPOINT, app_id=app_id)
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id_spark).run(
             endpoint
         )
@@ -277,21 +287,22 @@ class LivyBatchOperator(BaseOperator):
                 job_id = job["jobId"]
                 job_status = job["status"]
                 logging.info(
-                    f"Job id {job_id} associated with application '{app_id}' "
-                    f"is '{job_status}'"
+                    "Job id {job_id} associated with application '{app_id}' "
+                    "is '{job_status}'".format(app_id=app_id, job_status=job_status)
                 )
                 if job_status != expected_status:
                     raise AirflowException(
-                        f"Job id '{job_id}' associated with application '{app_id}' "
-                        f"is '{job_status}', expected status is '{expected_status}'"
+                        "Job id '{job_id}' associated with application '{app_id}' "
+                        "is '{job_status}', expected status is '{expected_status}'"
+                            .format(job_id=job_id, app_id=app_id, job_status=job_status, expected_status=expected_status)
                     )
         except (JSONDecodeError, LookupError, TypeError) as ex:
             log_response_error("$.jobId, $.status", response)
             raise AirflowBadRequest(ex)
 
     def check_yarn_app_status(self, app_id):
-        logging.info(f"Getting app status (id={app_id}) from YARN RM REST API...")
-        endpoint = f"{YARN_ENDPOINT}/{app_id}"
+        logging.info("Getting app status (id={app_id}) from YARN RM REST API...".format(app_id=app_id))
+        endpoint = "{YARN_ENDPOINT}/{app_id}".format(YARN_ENDPOINT=YARN_ENDPOINT, app_id=app_id)
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id_yarn).run(
             endpoint
         )
@@ -303,13 +314,14 @@ class LivyBatchOperator(BaseOperator):
         expected_status = "SUCCEEDED"
         if status != expected_status:
             raise AirflowException(
-                f"YARN app {app_id} is '{status}', expected status: '{expected_status}'"
+                "YARN app {app_id} is '{status}', expected status: '{expected_status}'"
+                    .format(app_id=app_id, status=status, expected_status=expected_status)
             )
 
     def spill_batch_logs(self):
-        dashes = 50
-        logging.info(f"{'-'*dashes}Full log for batch {self.batch_id}{'-'*dashes}")
-        endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}/log"
+        dashes = '-'*50
+        logging.info("{dashes}Full log for batch {batch_id}{dashes}".format(dashes=dashes, batch_id=self.batch_id))
+        endpoint = "{LIVY_ENDPOINT}/{batch_id}/log".format(LIVY_ENDPOINT=LIVY_ENDPOINT, batch_id=self.batch_id)
         hook = HttpHook(method="GET", http_conn_id=self.http_conn_id_livy)
         line_from = 0
         line_to = LOG_PAGE_LINES
@@ -327,15 +339,15 @@ class LivyBatchOperator(BaseOperator):
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(
-                    f"{'-' * dashes}End of full log for batch {self.batch_id}"
-                    f"{'-' * dashes}"
+                    "{dashes}End of full log for batch {batch_id}"
+                    "{dashes}".format(dashes=dashes, batch_id=self.batch_id)
                 )
                 break
             line_from = actual_line_from + actual_lines
 
     @staticmethod
     def fetch_log_page(hook: HttpHook, endpoint, line_from, line_to):
-        prepd_endpoint = endpoint + f"?from={line_from}&size={line_to}"
+        prepd_endpoint = endpoint + "?from={line_from}&size={line_to}".format(line_from=line_from, line_to=line_to)
         response = hook.run(prepd_endpoint)
         try:
             return json.loads(response.content)
@@ -344,9 +356,9 @@ class LivyBatchOperator(BaseOperator):
             raise AirflowBadRequest(ex)
 
     def close_batch(self):
-        logging.info(f"Closing batch with id = {self.batch_id}")
-        batch_endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
+        logging.info("Closing batch with id = {batch_id}".format(batch_id=self.batch_id))
+        batch_endpoint = "{LIVY_ENDPOINT}/{batch_id}".format(LIVY_ENDPOINT=LIVY_ENDPOINT, batch_id=self.batch_id)
         HttpHook(method="DELETE", http_conn_id=self.http_conn_id_livy).run(
             batch_endpoint
         )
-        logging.info(f"Batch {self.batch_id} has been closed")
+        logging.info("Batch {batch_id} has been closed".format(batch_id=self.batch_id))

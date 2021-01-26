@@ -23,13 +23,13 @@ if load_from == "local":
 elif load_from == "pypi":
     from airflow_livy.session import LivySessionOperator
 else:
-    raise ImportError(f"Can't load Livy operator from '{load_from}'")
+    raise ImportError("Can't load Livy operator from '{load_from}'".format(load_from=load_from))
 
 
 def read_code_from_file(task_instance, **context):
     session_files_path = Variable.get("session_files_path")
     join_code_path = os.path.join(session_files_path, "join_2_files.py")
-    logging.info(f"Reading the session code file from {join_code_path}")
+    logging.info("Reading the session code file from {join_code_path}".format(join_code_path=join_code_path))
     with open(join_code_path) as join_code_file:
         join_code = join_code_file.read()
     template = Template(join_code)

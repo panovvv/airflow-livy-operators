@@ -30,9 +30,9 @@ LOG_PAGE_LINES = 100
 def log_response_error(lookup_path, response, session_id=None, statement_id=None):
     msg = "Can not parse JSON response."
     if session_id is not None:
-        msg += f" Session id={session_id}."
+        msg += " Session id={session_id}.".format(session_id=session_id)
     if statement_id is not None:
-        msg += f" Statement id={statement_id}."
+        msg += " Statement id={statement_id}.".format(statement_id=statement_id)
     try:
         pp_response = (
             json.dumps(json.loads(response.content), indent=2)
@@ -41,20 +41,23 @@ def log_response_error(lookup_path, response, session_id=None, statement_id=None
         )
     except AttributeError:
         pp_response = json.dumps(response, indent=2)
-    msg += f"\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"
+    msg += "\nTried to find JSON path: {lookup_path}, but response was:\n{pp_response}"\
+        .format(lookup_path=lookup_path, pp_response=pp_response)
     logging.error(msg)
 
 
 def validate_timings(poke_interval, timeout):
     if poke_interval < 1:
         raise AirflowException(
-            f"Poke interval {poke_interval} sec. is too small, "
-            f"this will result in too frequent API calls"
+            "Poke interval {poke_interval} sec. is too small, "
+            "this will result in too frequent API calls"
+                .format(poke_interval=poke_interval)
         )
     if poke_interval > timeout:
         raise AirflowException(
-            f"Poke interval {poke_interval} sec. is greater "
-            f"than the timeout value {timeout} sec. Timeout won't work."
+            "Poke interval {poke_interval} sec. is greater "
+            "than the timeout value {timeout} sec. Timeout won't work."
+                .format(poke_interval=poke_interval, timeout=timeout)
         )
 
 
@@ -81,8 +84,8 @@ class LivySessionCreationSensor(BaseSensorOperator):
         self.http_conn_id = http_conn_id
 
     def poke(self, context):
-        logging.info(f"Getting session {self.session_id} status...")
-        endpoint = f"{ENDPOINT}/{self.session_id}/state"
+        logging.info("Getting session {session_id} status...".format(session_id=self.session_id))
+        endpoint = "{ENDPOINT}/{session_id}/state".format(ENDPOINT=ENDPOINT, session_id=self.session_id)
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
         try:
             state = json.loads(response.content)["state"]
@@ -90,14 +93,14 @@ class LivySessionCreationSensor(BaseSensorOperator):
             log_response_error("$.state", response, self.session_id)
             raise AirflowBadRequest(ex)
         if state == "starting":
-            logging.info(f"Session {self.session_id} is starting...")
+            logging.info("Session {session_id} is starting...".format(session_id=self.session_id))
             return False
         if state == "idle":
-            logging.info(f"Session {self.session_id} is ready to receive statements.")
+            logging.info("Session {session_id} is ready to receive statements.".format(session_id=self.session_id))
             return True
         raise AirflowException(
-            f"Session {self.session_id} failed to start. "
-            f"State='{state}'. Expected states: 'starting' or 'idle' (ready)."
+            "Session {session_id} failed to start. "
+            "State='{state}'. Expected states: 'starting' or 'idle' (ready).".format(session_id=self.session_id, state=state)
         )
 
 
@@ -127,10 +130,11 @@ class LivyStatementSensor(BaseSensorOperator):
 
     def poke(self, context):
         logging.info(
-            f"Getting status for statement {self.statement_id} "
-            f"in session {self.session_id}"
+            "Getting status for statement {statement_id} "
+            "in session {session_id}".format(statement_id=self.statement_id, session_id=self.session_id)
         )
-        endpoint = f"{ENDPOINT}/{self.session_id}/statements/{self.statement_id}"
+        endpoint = "{ENDPOINT}/{session_id}/statements/{statement_id}"\
+            .format(ENDPOINT=ENDPOINT, session_id=self.session_id, statement_id=self.statement_id)
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
         try:
             statement = json.loads(response.content)
@@ -140,17 +144,19 @@ class LivyStatementSensor(BaseSensorOperator):
             raise AirflowBadRequest(ex)
         if state in ["waiting", "running"]:
             logging.info(
-                f"Statement {self.statement_id} in session {self.session_id} "
-                f"has not finished yet (state is '{state}')"
+                "Statement {statement_id} in session {session_id} "
+                "has not finished yet (state is '{state}')"
+                    .format(statement_id=self.statement_id, session_id=self.session_id, state=state)
             )
             return False
         if state == "available":
             self.__check_status(statement, response)
             return True
         raise AirflowBadRequest(
-            f"Statement {self.statement_id} in session {self.session_id} failed due to "
-            f"an unknown state: '{state}'.\nKnown states: 'waiting', 'running', "
+            "Statement {statement_id} in session {session_id} failed due to "
+            "an unknown state: '{state}'.\nKnown states: 'waiting', 'running', "
             "'available'"
+                .format(statement_id=self.statement_id, session_id=self.session_id, state=state)
         )
 
     def __check_status(self, statement, response):
@@ -164,37 +170,41 @@ class LivyStatementSensor(BaseSensorOperator):
             raise AirflowBadRequest(ex)
         pp_output = "\n".join(json.dumps(output, indent=2).split("\\n"))
         logging.info(
-            f"Statement {self.statement_id} in session {self.session_id} "
-            f"finished. Output:\n{pp_output}"
+            "Statement {statement_id} in session {session_id} "
+            "finished. Output:\n{pp_output}"
+                .format(statement_id=self.statement_id, session_id=self.session_id, pp_output=pp_output)
         )
         if status != "ok":
             raise AirflowBadRequest(
-                f"Statement {self.statement_id} in session {self.session_id} "
-                f"failed with status '{status}'. Expected status is 'ok'"
+                "Statement {statement_id} in session {session_id} "
+                "failed with status '{status}'. Expected status is 'ok'"
+                    .format(statement_id=self.statement_id, session_id=self.session_id, status=status)
             )
 
 
 class LivySessionOperator(BaseOperator):
     class Statement:
         template_fields = ["code"]
-        code: str
-        kind: str
+        code = ""
+        kind = ""
 
         def __init__(self, code, kind=None):
             if kind in ALLOWED_LANGUAGES or kind is None:
                 self.kind = kind
             else:
                 raise AirflowException(
-                    f"Can not create statement with kind '{kind}'!\n"
-                    f"Allowed session kinds: {ALLOWED_LANGUAGES}"
+                    "Can not create statement with kind '{kind}'!\n"
+                    "Allowed session kinds: {ALLOWED_LANGUAGES}"
+                        .format(kind=kind, ALLOWED_LANGUAGES=ALLOWED_LANGUAGES)
                 )
             self.code = code
 
         def __str__(self) -> str:
-            dashes = 80
+            dashes = '-'*80
             return (
-                f"\n{{\n  Statement, kind: {self.kind}"
-                f"\n  code:\n{'-'*dashes}\n{self.code}\n{'-'*dashes}\n}}"
+                "\n{{\n  Statement, kind: {kind}"
+                "\n  code:\n{dashes}\n{code}\n{dashes}\n}}"
+                    .format(kind=self.kind, code=self.code, dashes=dashes)
             )
 
         __repr__ = __str__
@@ -230,15 +240,16 @@ class LivySessionOperator(BaseOperator):
         http_conn_id="livy",
         spill_logs=False,
         *args,
-        **kwargs,
+        **kwargs
     ):
         super(LivySessionOperator, self).__init__(*args, **kwargs)
         if kind in ALLOWED_LANGUAGES or kind is None:
             self.kind = kind
         else:
             raise AirflowException(
-                f"Can not create session with kind '{kind}'!\n"
-                f"Allowed session kinds: {ALLOWED_LANGUAGES}"
+                "Can not create session with kind '{kind}'!\n"
+                "Allowed session kinds: {ALLOWED_LANGUAGES}"
+                    .format(kind=kind, ALLOWED_LANGUAGES=ALLOWED_LANGUAGES)
             )
         self.statements = statements
         self.proxy_user = proxy_user
@@ -266,7 +277,7 @@ class LivySessionOperator(BaseOperator):
     def execute(self, context):
         try:
             self.create_session()
-            logging.info(f"Session has been created with id = {self.session_id}.")
+            logging.info("Session has been created with id = {session_id}.".format(session_id=self.session_id))
             LivySessionCreationSensor(
                 self.session_id,
                 task_id=self.task_id,
@@ -274,17 +285,19 @@ class LivySessionOperator(BaseOperator):
                 poke_interval=self.session_start_poll_period_sec,
                 timeout=self.session_start_timeout_sec,
             ).execute(context)
-            logging.info(f"Session {self.session_id} is ready to accept statements.")
+            logging.info("Session {session_id} is ready to accept statements.".format(session_id=self.session_id))
             for i, statement in enumerate(self.statements):
                 logging.info(
-                    f"Submitting statement {i+1}/{len(self.statements)} "
-                    f"in session {self.session_id}..."
+                    "Submitting statement {i+1}/{len(statements)} "
+                    "in session {session_id}..."
+                        .format(statements=self.statements, session_id=self.session_id)
                 )
                 statement_id = self.submit_statement(statement)
                 logging.info(
-                    f"Statement {i+1}/{len(self.statements)} "
-                    f"(session {self.session_id}) "
-                    f"has been submitted with id {statement_id}"
+                    "Statement {i+1}/{len(statements)} "
+                    "(session {session_id}) "
+                    "has been submitted with id {statement_id}"
+                        .format(statements=self.statements, session_id=self.session_id, statement_id=statement_id)
                 )
                 LivyStatementSensor(
                     self.session_id,
@@ -295,8 +308,9 @@ class LivySessionOperator(BaseOperator):
                     timeout=self.statemt_timeout_minutes * 60,
                 ).execute(context)
             logging.info(
-                f"All {len(self.statements)} statements in session {self.session_id} "
-                f"completed successfully!"
+                "All {len(statements)} statements in session {session_id} "
+                "completed successfully!"
+                    .format(statements=self.statements, session_id=self.session_id)
             )
         except Exception:
             if self.session_id is not None:
@@ -330,8 +344,8 @@ class LivySessionOperator(BaseOperator):
         }
         payload = {k: v for k, v in unfiltered_payload.items() if v}
         logging.info(
-            f"Creating a session in Livy... "
-            f"Payload:\n{json.dumps(payload, indent=2)}"
+            "Creating a session in Livy... "
+            "Payload:\n{payload}".format(payload=json.dumps(payload, indent=2))
         )
         response = HttpHook(http_conn_id=self.http_conn_id).run(
             ENDPOINT, json.dumps(payload), headers,
@@ -344,8 +358,9 @@ class LivySessionOperator(BaseOperator):
 
         if not isinstance(session_id, Number):
             raise AirflowException(
-                f"ID of the created session is not a number ({session_id}). "
+                "ID of the created session is not a number ({session_id}). "
                 "Are you sure we're calling Livy API?"
+                    .format(session_id=session_id)
             )
         self.session_id = session_id
 
@@ -354,7 +369,7 @@ class LivySessionOperator(BaseOperator):
         payload = {"code": statement.code}
         if statement.kind:
             payload["kind"] = statement.kind
-        endpoint = f"{ENDPOINT}/{self.session_id}/statements"
+        endpoint = "{ENDPOINT}/{session_id}/statements".format(ENDPOINT=ENDPOINT, session_id=self.session_id)
         response = HttpHook(http_conn_id=self.http_conn_id).run(
             endpoint, json.dumps(payload), headers
         )
@@ -365,9 +380,9 @@ class LivySessionOperator(BaseOperator):
             raise AirflowBadRequest(ex)
 
     def spill_session_logs(self):
-        dashes = 50
-        logging.info(f"{'-'*dashes}Full log for session {self.session_id}{'-'*dashes}")
-        endpoint = f"{ENDPOINT}/{self.session_id}/log"
+        dashes = '-'*50
+        logging.info("{dashes}Full log for session {session_id}{dashes}".format(dashes=dashes, session_id=self.session_id))
+        endpoint = "{ENDPOINT}/{session_id}/log".format(ENDPOINT=ENDPOINT, session_id=self.session_id)
         hook = HttpHook(method="GET", http_conn_id=self.http_conn_id)
         line_from = 0
         line_to = LOG_PAGE_LINES
@@ -385,15 +400,15 @@ class LivySessionOperator(BaseOperator):
             actual_lines = len(logs)
             if actual_line_from + actual_lines >= total_lines:
                 logging.info(
-                    f"{'-' * dashes}End of full log for session {self.session_id}"
-                    f"{'-' * dashes}"
+                    "{dashes}End of full log for session {session_id}"
+                    "{dashes}".format(dashes=dashes, session_id=self.session_id)
                 )
                 break
             line_from = actual_line_from + actual_lines
 
     @staticmethod
     def fetch_log_page(hook: HttpHook, endpoint, line_from, line_to):
-        prepd_endpoint = endpoint + f"?from={line_from}&size={line_to}"
+        prepd_endpoint = endpoint + "?from={line_from}&size={line_to}".format(line_from=line_from, line_to=line_to)
         response = hook.run(prepd_endpoint)
         try:
             return json.loads(response.content)
@@ -402,7 +417,7 @@ class LivySessionOperator(BaseOperator):
             raise AirflowBadRequest(ex)
 
     def close_session(self):
-        logging.info(f"Closing session with id = {self.session_id}")
-        session_endpoint = f"{ENDPOINT}/{self.session_id}"
+        logging.info("Closing session with id = {session_id}".format(session_id=self.session_id))
+        session_endpoint = "{ENDPOINT}/{session_id}".format(ENDPOINT=ENDPOINT, session_id=self.session_id)
         HttpHook(method="DELETE", http_conn_id=self.http_conn_id).run(session_endpoint)
-        logging.info(f"Session {self.session_id} has been closed")
+        logging.info("Session {session_id} has been closed".format(session_id=self.session_id))

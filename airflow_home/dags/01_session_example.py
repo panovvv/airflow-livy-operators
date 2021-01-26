@@ -23,7 +23,7 @@ if load_from == "local":
 elif load_from == "pypi":
     from airflow_livy.session import LivySessionOperator
 else:
-    raise ImportError(f"Can't load Livy operator from '{load_from}'")
+    raise ImportError("Can't load Livy operator from '{load_from}'".format(load_from=load_from))
 
 
 dag = DAG(
