@@ -40,6 +40,7 @@ Connections for Livy, Spark and YARN. Redefine as appropriate.
 1. run `./helper.sh up` to bring up the whole infrastructure. 
 Airflow UI will be available at
 [localhost:8888](http://localhost:8888 "Airflow UI").
+   The credentials are `admin/admin`.
 1. Ctrl+C to stop Airflow. Then `./helper.sh down` to dispose of
 remaining Airflow processes (shouldn't be required if everything goes well.
 Run this if you can't start Airflow again due to some non-informative errors) .

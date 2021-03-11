@@ -82,21 +82,23 @@ init_airflow() {
   if [ ! -e "${SCRIPT_DIR}/airflow_home/airflow.db" ]; then
     . "${SCRIPT_DIR}/venv/bin/activate"
     _echo_color yellow "Initializing Airflow..."
-    airflow initdb
-    airflow variables -s session_files_path "${SCRIPT_DIR}/sessions"
-    airflow variables -s batch_files_path "${SCRIPT_DIR}/batches"
-    airflow connections -a --conn_id livy --conn_type HTTP \
-      --conn_host localhost --conn_schema http --conn_port 8998
-    airflow connections -a --conn_id spark --conn_type HTTP \
-      --conn_host localhost --conn_schema http --conn_port 18080
-    airflow connections -a --conn_id yarn --conn_type HTTP \
-      --conn_host localhost --conn_schema http --conn_port 8088
-    airflow unpause 01_session_example &
-    airflow unpause 02_session_example_load_from_file &
-    airflow unpause 03_batch_example &
-    airflow unpause 04_batch_example_failing &
-    airflow unpause 05_batch_example_verify_in_spark &
-    airflow unpause 06_batch_example_verify_in_yarn &
+    airflow db init
+    airflow users create -u admin -p admin \
+      -e email -f first -l last -r Admin
+    airflow variables set session_files_path "${SCRIPT_DIR}/sessions"
+    airflow variables set batch_files_path "${SCRIPT_DIR}/batches"
+    airflow connections add livy --conn-type HTTP \
+      --conn-host localhost --conn-schema http --conn-port 8998
+    airflow connections add spark --conn-type HTTP \
+      --conn-host localhost --conn-schema http --conn-port 18080
+    airflow connections add yarn --conn-type HTTP \
+      --conn-host localhost --conn-schema http --conn-port 8088
+    airflow dags unpause 01_session_example &
+    airflow dags unpause 02_session_example_load_from_file &
+    airflow dags unpause 03_batch_example &
+    airflow dags unpause 04_batch_example_failing &
+    airflow dags unpause 05_batch_example_verify_in_spark &
+    airflow dags unpause 06_batch_example_verify_in_yarn &
     deactivate
     _echo_color green "Airflow initialized."
   else
@@ -162,8 +164,7 @@ up)
   export_airflow_env_vars
   init_airflow
   . "${SCRIPT_DIR}/venv/bin/activate"
-  pip install airflow-livy-operators==0.3.1
-  airflow variables -s load_operators_from "pypi"
+  pip install airflow-livy-operators==0.4.0
   _echo_color cyan "Running Airflow..."
   airflow scheduler &
   airflow webserver
@@ -184,7 +185,6 @@ updev)
   export_airflow_env_vars
   init_airflow
   . "${SCRIPT_DIR}/venv/bin/activate"
-  airflow variables -s load_operators_from "local"
   _echo_color cyan "Running Airflow in development mode..."
   airflow scheduler &
   airflow webserver
@@ -198,7 +198,7 @@ format)
   _echo_color blue "Formatting Python files..."
   black airflow_home/ batches/ tests/
   _echo_color blue "Sorting imports..."
-  isort -rc airflow_home/ batches/ tests/
+  isort airflow_home/ batches/ tests/
   _echo_color green "Done!"
   deactivate
   ;;

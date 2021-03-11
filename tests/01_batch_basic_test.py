@@ -2,7 +2,7 @@ import json
 
 from airflow import AirflowException
 from airflow.exceptions import AirflowBadRequest
-from airflow.hooks.http_hook import HttpHook
+from airflow.providers.http.hooks.http import HttpHook
 from deepdiff import DeepDiff
 from pytest import mark, raises
 from requests import Response
@@ -18,7 +18,7 @@ def test_jinja(dag):
             "{{ run_id|replace(':', '-') }}",
             "prefix {{ custom_param }} postfix",
         ],
-        task_id="test_jinja",
+        task_id="test_jinja_batch",
         dag=dag,
     )
     op.render_template_fields({"run_id": "hello:world", "custom_param": "custom value"})
@@ -146,7 +146,9 @@ def test_submit_batch_params(dag, mocker):
 
 @mark.parametrize("code", [404, 403, 500, 503, 504])
 def test_submit_batch_bad_response_codes(dag, mocker, code):
-    op = LivyBatchOperator(task_id="test_submit_batch_bad_response_codes", dag=dag)
+    op = LivyBatchOperator(
+        task_id=f"test_submit_batch_bad_response_codes_{code}", dag=dag
+    )
     http_response = mock_http_calls(
         code, content=b"Error content", reason="Good reason"
     )

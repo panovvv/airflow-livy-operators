@@ -2,7 +2,7 @@ import json
 
 from airflow import AirflowException
 from airflow.exceptions import AirflowBadRequest
-from airflow.hooks.http_hook import HttpHook
+from airflow.providers.http.hooks.http import HttpHook
 from deepdiff import DeepDiff
 from pytest import mark, raises
 from requests import Response
@@ -124,7 +124,7 @@ def test_create_session_params(dag, mocker):
 @mark.parametrize("code", [404, 403, 500, 503, 504])
 def test_create_session_bad_response_codes(dag, mocker, code):
     op = LivySessionOperator(
-        statements=[], task_id="test_create_session_bad_response_codes", dag=dag
+        statements=[], task_id=f"test_create_session_bad_response_codes_{code}", dag=dag
     )
     http_response = mock_http_calls(
         code, content=b"Error content", reason="Good reason"

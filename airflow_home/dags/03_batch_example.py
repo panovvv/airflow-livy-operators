@@ -9,18 +9,11 @@ b) you can run and debug batch files even locally in IDE!
 from datetime import datetime
 
 from airflow import DAG
-from airflow.models import Variable
 
-load_from = Variable.get("load_operators_from", "local")
-if load_from == "local":
-    try:
-        from airflow.operators import LivyBatchOperator
-    except ImportError:
-        from airflow_home.plugins.airflow_livy.session import LivyBatchOperator
-elif load_from == "pypi":
+try:
     from airflow_livy.batch import LivyBatchOperator
-else:
-    raise ImportError(f"Can't load Livy operator from '{load_from}'")
+except ImportError:
+    from airflow_home.plugins.airflow_livy.session import LivyBatchOperator
 
 dag = DAG(
     "03_batch_example",

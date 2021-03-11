@@ -1,8 +1,8 @@
 import requests
 import responses
 from airflow import AirflowException
-from airflow.hooks.http_hook import HttpHook
 from airflow.models import Connection
+from airflow.providers.http.hooks.http import HttpHook
 from pytest import mark, raises
 
 from airflow_home.plugins.airflow_livy.session import LivySessionOperator
@@ -65,7 +65,7 @@ def test_run_session_error_during_status_probing(dag, mocker, code):
     op = LivySessionOperator(
         statements=[],
         spill_logs=True,
-        task_id="test_run_session_error_during_status_probing",
+        task_id=f"test_run_session_error_during_status_probing_{code}",
         dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_session_logs")
@@ -96,7 +96,7 @@ def test_run_session_error_when_submitting_statement(dag, mocker, code):
     op = LivySessionOperator(
         statements=[st1, st2],
         spill_logs=True,
-        task_id="test_run_session_error_when_submitting_statement",
+        task_id=f"test_run_session_error_when_submitting_statement_{code}",
         dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_session_logs")
@@ -191,7 +191,7 @@ def test_run_session_logs_malformed_json(dag, mocker):
     op = LivySessionOperator(
         statements=[],
         spill_logs=True,
-        task_id="test_run_session_logs_greater_than_page_size",
+        task_id="test_run_session_logs_malformed_json",
         dag=dag,
     )
     mock_livy_session_responses(mocker, log_override_response='{"invalid":json]}')

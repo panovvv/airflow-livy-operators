@@ -17,9 +17,9 @@ from numbers import Number
 from typing import List
 
 from airflow.exceptions import AirflowBadRequest, AirflowException
-from airflow.hooks.http_hook import HttpHook
 from airflow.models import BaseOperator
-from airflow.sensors.base_sensor_operator import BaseSensorOperator
+from airflow.providers.http.hooks.http import HttpHook
+from airflow.sensors.base import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 
 ENDPOINT = "sessions"

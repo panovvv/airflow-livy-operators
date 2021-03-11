@@ -2,8 +2,8 @@ from typing import Iterable
 from unittest.mock import Mock
 
 import responses
-from airflow.hooks.http_hook import HttpHook
 from airflow.models import Connection
+from airflow.providers.http.hooks.http import HttpHook
 
 from tests.helpers import LogMocker, MockedResponse
 

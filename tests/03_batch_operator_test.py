@@ -1,8 +1,8 @@
 import requests
 import responses
 from airflow import AirflowException
-from airflow.hooks.http_hook import HttpHook
 from airflow.models import Connection
+from airflow.providers.http.hooks.http import HttpHook
 from pytest import mark, raises
 
 from airflow_home.plugins.airflow_livy.batch import LivyBatchOperator
@@ -52,7 +52,9 @@ def test_run_batch_error_before_batch_created(dag, mocker):
 @mark.parametrize("code", [404, 403, 500, 503, 504])
 def test_run_batch_error_during_status_probing(dag, mocker, code):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_error_during_status_probing", dag=dag,
+        spill_logs=True,
+        task_id=f"test_run_batch_error_during_status_probing_{code}",
+        dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
@@ -178,7 +180,7 @@ def test_run_batch_verify_in_yarn(dag, mocker):
     op = LivyBatchOperator(
         verify_in="yarn",
         spill_logs=False,
-        task_id="test_run_batch_verify_in_spark",
+        task_id="test_run_batch_verify_in_yarn",
         dag=dag,
     )
     yarn_checker_spy = mocker.spy(op, "check_yarn_app_status")
@@ -192,7 +194,7 @@ def test_run_batch_verify_in_yarn_garbled_response(dag, mocker):
     op = LivyBatchOperator(
         verify_in="yarn",
         spill_logs=False,
-        task_id="test_run_batch_verify_in_spark",
+        task_id="test_run_batch_verify_in_yarn_garbled_response",
         dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
@@ -214,7 +216,7 @@ def test_run_batch_verify_in_yarn_failed(dag, mocker):
     op = LivyBatchOperator(
         verify_in="yarn",
         spill_logs=False,
-        task_id="test_run_batch_verify_in_spark",
+        task_id="test_run_batch_verify_in_yarn_failed",
         dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
@@ -280,7 +282,7 @@ def test_run_batch_logs_greater_than_page_size(dag, mocker):
 @responses.activate
 def test_run_batch_logs_malformed_json(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_logs_greater_than_page_size", dag=dag,
+        spill_logs=True, task_id="test_run_batch_logs_malformed_json", dag=dag,
     )
     mock_livy_batch_responses(mocker, log_override_response='{"invalid":json]}')
     with raises(AirflowException) as ae:

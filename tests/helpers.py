@@ -1,5 +1,5 @@
 import json
-from collections import Iterable
+from collections.abc import Iterable
 from dataclasses import dataclass
 from json import JSONDecodeError
 from typing import Any, Mapping

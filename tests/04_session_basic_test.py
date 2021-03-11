@@ -50,7 +50,7 @@ def test_jinja(dag):
     op = LivySessionOperator(
         name="test_jinja_{{ run_id }}",
         statements=[st1, st2],
-        task_id="test_jinja",
+        task_id="test_jinja_session",
         dag=dag,
     )
     op.render_template_fields({"run_id": "hello:world", "custom_param": 3})
