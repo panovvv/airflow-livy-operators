@@ -8,9 +8,11 @@ language: python
 python:
   - '3.7'
   - '3.8'
+  - '3.9'
 os: linux
+dist: focal
 install:
-  - pip install tox==3.14.5
+  - pip install tox==3.23.0
 script:
   - tox
 
