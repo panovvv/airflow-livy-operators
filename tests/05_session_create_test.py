@@ -44,7 +44,7 @@ def test_create_session_params(dag, mocker):
         executor_cores=2,
         num_executors=3,
         archives=["archive1", "archive2"],
-        queue="queue",
+        yarn_queue="queue",
         name="name",
         conf={"key1": "val1", "key2": 2},
         heartbeat_timeout=heartbeat_timeout,

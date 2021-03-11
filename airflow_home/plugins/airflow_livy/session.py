@@ -219,7 +219,7 @@ class LivySessionOperator(BaseOperator):
         executor_cores=None,
         num_executors=None,
         archives=None,
-        queue=None,
+        yarn_queue=None,
         name=None,
         conf=None,
         heartbeat_timeout=None,
@@ -251,7 +251,7 @@ class LivySessionOperator(BaseOperator):
         self.executor_cores = executor_cores
         self.num_executors = num_executors
         self.archives = archives
-        self.queue = queue
+        self.yarn_queue = yarn_queue
         self.name = name
         self.conf = conf
         self.heartbeat_timeout = heartbeat_timeout
@@ -323,7 +323,7 @@ class LivySessionOperator(BaseOperator):
             "executorCores": self.executor_cores,
             "numExecutors": self.num_executors,
             "archives": self.archives,
-            "queue": self.queue,
+            "queue": self.yarn_queue,
             "name": self.name,
             "conf": self.conf,
             "heartbeatTimeoutInSecond": self.heartbeat_timeout,
