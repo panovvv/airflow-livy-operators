@@ -31,7 +31,9 @@ def mock_livy_batch_responses(
     _mock_log_response(log_override_response, log_lines)
     _mock_delete_response(mock_delete)
     mocker.patch.object(
-        HttpHook, "get_connection", return_value=Connection(host=HOST, port=PORT),
+        HttpHook,
+        "get_connection",
+        return_value=Connection(host=HOST, port=PORT),
     )
 
 

@@ -30,7 +30,9 @@ def test_jinja(dag):
 def test_invalid_verification(dag):
     with raises(AirflowException) as ae:
         LivyBatchOperator(
-            task_id="test_invalid_verification", verify_in="invalid", dag=dag,
+            task_id="test_invalid_verification",
+            verify_in="invalid",
+            dag=dag,
         )
     print(
         f"\n\nCreated a batch operator with invalid veification method, "

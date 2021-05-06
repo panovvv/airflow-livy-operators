@@ -11,10 +11,8 @@ python:
   - '3.9'
 os: linux
 dist: focal
-install:
-  - pip install tox==3.23.0
 script:
-  - tox
+  - sh helper.sh ci
 
 # Deploy to PyPi on each version tag
 deploy:

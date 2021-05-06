@@ -14,7 +14,10 @@ def test_session_creation_sensor(mocker):
         timeout=3,
         task_id="test_session_creation_sensor",
     )
-    response = mock_http_calls(200, content=b'{"id": 123, "state": "idle"}',)
+    response = mock_http_calls(
+        200,
+        content=b'{"id": 123, "state": "idle"}',
+    )
     mocker.patch.object(HttpHook, "get_conn", return_value=response)
     sen.execute({})
     assert sen.session_id == 123

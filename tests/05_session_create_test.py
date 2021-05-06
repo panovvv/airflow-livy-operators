@@ -13,7 +13,9 @@ from tests.helpers import find_json_in_args, mock_http_calls
 
 def test_create_session_get_id(dag, mocker):
     op = LivySessionOperator(
-        statements=[], task_id="test_create_session_get_id", dag=dag,
+        statements=[],
+        task_id="test_create_session_get_id",
+        dag=dag,
     )
     http_response = mock_http_calls(201, content=b'{"id": 456}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)

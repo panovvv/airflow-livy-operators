@@ -47,7 +47,9 @@ def test_run_session_error_before_session_created(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_session_logs")
     mocker.patch.object(
-        HttpHook, "get_connection", return_value=Connection(host="HOST", port=123),
+        HttpHook,
+        "get_connection",
+        return_value=Connection(host="HOST", port=123),
     )
     with raises(requests.exceptions.ConnectionError) as ae:
         op.execute({})

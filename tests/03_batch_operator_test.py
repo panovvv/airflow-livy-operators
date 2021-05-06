@@ -32,11 +32,15 @@ def test_run_batch_successfully(dag, mocker):
 
 def test_run_batch_error_before_batch_created(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_error_before_batch_created", dag=dag,
+        spill_logs=True,
+        task_id="test_run_batch_error_before_batch_created",
+        dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mocker.patch.object(
-        HttpHook, "get_connection", return_value=Connection(host="HOST", port=123),
+        HttpHook,
+        "get_connection",
+        return_value=Connection(host="HOST", port=123),
     )
     with raises(requests.exceptions.ConnectionError) as ae:
         op.execute({})
@@ -92,7 +96,10 @@ def test_run_batch_verify_in_spark(dag, mocker):
 @responses.activate
 def test_run_batch_no_appid(dag, mocker):
     op = LivyBatchOperator(
-        verify_in="spark", spill_logs=False, task_id="test_run_batch_no_appid", dag=dag,
+        verify_in="spark",
+        spill_logs=False,
+        task_id="test_run_batch_no_appid",
+        dag=dag,
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
@@ -164,7 +171,8 @@ def test_run_batch_verify_in_spark_garbled(dag, mocker):
     )
     spill_logs_spy = mocker.spy(op, "spill_batch_logs")
     mock_livy_batch_responses(
-        mocker, mock_spark=[MockedResponse(200, json_body={"unparseable": "obj"})],
+        mocker,
+        mock_spark=[MockedResponse(200, json_body={"unparseable": "obj"})],
     )
     with raises(AirflowException) as ae:
         op.execute({})
@@ -249,7 +257,9 @@ def test_run_batch_logs_less_pages_than_page_size(dag, mocker):
 @responses.activate
 def test_run_batch_logs_one_page_size(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_logs_one_page_size", dag=dag,
+        spill_logs=True,
+        task_id="test_run_batch_logs_one_page_size",
+        dag=dag,
     )
     fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
     mock_livy_batch_responses(mocker, log_lines=100)
@@ -260,7 +270,9 @@ def test_run_batch_logs_one_page_size(dag, mocker):
 @responses.activate
 def test_run_batch_logs_multiple_of_page_size(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_logs_multiple_of_page_size", dag=dag,
+        spill_logs=True,
+        task_id="test_run_batch_logs_multiple_of_page_size",
+        dag=dag,
     )
     fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
     mock_livy_batch_responses(mocker, log_lines=300)
@@ -271,7 +283,9 @@ def test_run_batch_logs_multiple_of_page_size(dag, mocker):
 @responses.activate
 def test_run_batch_logs_greater_than_page_size(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_logs_greater_than_page_size", dag=dag,
+        spill_logs=True,
+        task_id="test_run_batch_logs_greater_than_page_size",
+        dag=dag,
     )
     fetch_log_page_spy = mocker.spy(op, "fetch_log_page")
     mock_livy_batch_responses(mocker, log_lines=321)
@@ -282,7 +296,9 @@ def test_run_batch_logs_greater_than_page_size(dag, mocker):
 @responses.activate
 def test_run_batch_logs_malformed_json(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_logs_malformed_json", dag=dag,
+        spill_logs=True,
+        task_id="test_run_batch_logs_malformed_json",
+        dag=dag,
     )
     mock_livy_batch_responses(mocker, log_override_response='{"invalid":json]}')
     with raises(AirflowException) as ae:
@@ -296,7 +312,9 @@ def test_run_batch_logs_malformed_json(dag, mocker):
 @responses.activate
 def test_run_batch_logs_missing_attrs_in_json(dag, mocker):
     op = LivyBatchOperator(
-        spill_logs=True, task_id="test_run_batch_logs_missing_attrs_in_json", dag=dag,
+        spill_logs=True,
+        task_id="test_run_batch_logs_missing_attrs_in_json",
+        dag=dag,
     )
     mock_livy_batch_responses(mocker, log_override_response='{"id": 1, "from": 2}')
     with raises(AirflowException) as ae:

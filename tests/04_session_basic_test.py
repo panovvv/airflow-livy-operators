@@ -34,7 +34,10 @@ def test_allowed_session_kinds(dag):
     kind = "unknown"
     with raises(AirflowException) as ae:
         LivySessionOperator(
-            kind=kind, statements=[], task_id="test_allowed_session_kinds", dag=dag,
+            kind=kind,
+            statements=[],
+            task_id="test_allowed_session_kinds",
+            dag=dag,
         )
     print(
         f"\n\nTried to create a session with kind '{kind}', "

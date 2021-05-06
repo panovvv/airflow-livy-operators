@@ -9,14 +9,20 @@ from tests.helpers import mock_http_calls
 
 def test_batch_sensor(mocker):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor")
-    http_response = mock_http_calls(200, content=b'{"id": 2, "state": "success"}',)
+    http_response = mock_http_calls(
+        200,
+        content=b'{"id": 2, "state": "success"}',
+    )
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     sen.execute({})
 
 
 def test_batch_sensor_timeout(mocker):
     sen = LivyBatchSensor(
-        batch_id=2, task_id="test_batch_sensor_timeout", poke_interval=1, timeout=2,
+        batch_id=2,
+        task_id="test_batch_sensor_timeout",
+        poke_interval=1,
+        timeout=2,
     )
     http_response = mock_http_calls(200, content=b'{"id": 2, "state": "starting"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
@@ -71,7 +77,8 @@ def test_batch_sensor_valid_states(mocker, state):
 
 
 @mark.parametrize(
-    "state", ["error", "dead", "killed", "asdsas", 123, -1],
+    "state",
+    ["error", "dead", "killed", "asdsas", 123, -1],
 )
 def test_batch_sensor_invalid_states(dag, mocker, state):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_invalid_states")

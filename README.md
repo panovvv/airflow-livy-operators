@@ -60,20 +60,18 @@ See sample DAGs under `airflow_home/dags` to learn how to use the operators.
 Alright, you want to contribute and need to be able to run the stuff on your machine,
 as well as the usual niceness that comes with IDEs (debugging, syntax highlighting).
 
-* run `./helper.sh dev` to install all dev dependencies.
 * `./helper.sh updev` runs Airflow with local operators' code (as opposed to 
 pulling them from PyPi). Useful for development.
+* `./helper.sh full` - run tests (pytest) with coverage report 
+(will be saved to *htmlcov/*), highlight code style errors (flake8), 
+reformat all code ([black](https://black.readthedocs.io/en/stable/) + 
+[isort](https://readthedocs.org/projects/isort/))
+* `./helper.sh ci` - same as above, but only check the code formatting. This
+same command is ran by CI.
 * (Pycharm-specific) point PyCharm to your newly-created virtual environment: go to
 `"Preferences" -> "Project: airflow-livy-operators" -> "Project interpreter", select
 "Existing environment"` and pick __python3__ executable from __venv__ folder
 (__venv/bin/python3__)
-* `./helper.sh cov` - run tests with coverage report 
-(will be saved to *htmlcov/*).
-* `./helper.sh lint` - highlight code style errors.
-* `./helper.sh format` to reformat all code.
-(This project relies on [Black](https://black.readthedocs.io/en/stable/) + 
-[isort](https://readthedocs.org/projects/isort/))
-* `./helper.sh pypi` - generate the package for PyPi.
 
 ### ... debug?
 
