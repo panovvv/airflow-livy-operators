@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/panovvv/airflow-livy-operators.svg?branch=master)](https://travis-ci.org/panovvv/airflow-livy-operators)
 [![Code coverage](https://codecov.io/gh/panovvv/airflow-livy-operators/branch/master/graph/badge.svg)](https://codecov.io/gh/panovvv/airflow-livy-operators)
+![PyPI](https://img.shields.io/pypi/v/airflow-livy-operators)
 
 Lets Airflow DAGs run Spark jobs via Livy:
 * Sessions,
