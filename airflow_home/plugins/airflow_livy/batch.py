@@ -177,7 +177,7 @@ class LivyBatchOperator(BaseOperator):
             self.submit_batch()
             logging.info(f"Batch successfully submitted with id = {self.batch_id}.")
             LivyBatchSensor(
-                self.batch_id,
+                batch_id=self.batch_id,
                 task_id=self.task_id,
                 http_conn_id=self.http_conn_id_livy,
                 poke_interval=self.poll_period_sec,
