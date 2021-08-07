@@ -23,7 +23,6 @@ from airflow.exceptions import AirflowBadRequest, AirflowException
 from airflow.models import BaseOperator
 from airflow.providers.http.hooks.http import HttpHook
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.decorators import apply_defaults
 
 LIVY_ENDPOINT = "batches"
 SPARK_ENDPOINT = "api/v1/applications"
@@ -111,7 +110,6 @@ class LivyBatchSensor(BaseSensorOperator):
 class LivyBatchOperator(BaseOperator):
     template_fields = ["name", "arguments"]
 
-    @apply_defaults
     def __init__(
         self,
         file=None,
