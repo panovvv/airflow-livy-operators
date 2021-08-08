@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from requests import Response
 
 
-def mock_http_calls(status_code, content=None, reason=None):
+def mock_http_session(status_code, content=None, reason=None):
     http_response = Response()
     http_response.status_code = status_code
     http_response.headers = {}
@@ -21,6 +21,7 @@ def mock_http_calls(status_code, content=None, reason=None):
         http_response.reason = reason
     mocked_response = Mock()
     mocked_response.send.return_value = http_response
+    mocked_response.merge_environment_settings.return_value = {}
     return mocked_response
 
 
