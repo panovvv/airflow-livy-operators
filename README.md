@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.com/panovvv/airflow-livy-operators.svg?branch=master)](https://travis-ci.com/panovvv/airflow-livy-operators)
 [![Code coverage](https://codecov.io/gh/panovvv/airflow-livy-operators/branch/master/graph/badge.svg)](https://codecov.io/gh/panovvv/airflow-livy-operators)
 
-![PyPI](https://img.shields.io/pypi/v/airflow-livy-operators)
+[![PyPI](https://img.shields.io/pypi/v/airflow-livy-operators)](https://pypi.org/project/airflow-livy-operators/)
 ![Airflow dep version](https://img.shields.io/badge/airflow-2.1.2-green)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/airflow-livy-operators)
 
