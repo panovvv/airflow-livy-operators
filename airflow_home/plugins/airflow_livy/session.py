@@ -20,7 +20,6 @@ from airflow.exceptions import AirflowBadRequest, AirflowException
 from airflow.models import BaseOperator
 from airflow.providers.http.hooks.http import HttpHook
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.decorators import apply_defaults
 
 ENDPOINT = "sessions"
 ALLOWED_LANGUAGES = ["spark", "pyspark", "sparkr", "sql"]
@@ -204,7 +203,6 @@ class LivySessionOperator(BaseOperator):
         "statements",
     ]
 
-    @apply_defaults
     def __init__(
         self,
         statements: List[Statement],
@@ -268,7 +266,7 @@ class LivySessionOperator(BaseOperator):
             self.create_session()
             logging.info(f"Session has been created with id = {self.session_id}.")
             LivySessionCreationSensor(
-                self.session_id,
+                session_id=self.session_id,
                 task_id=self.task_id,
                 http_conn_id=self.http_conn_id,
                 poke_interval=self.session_start_poll_period_sec,
@@ -287,8 +285,8 @@ class LivySessionOperator(BaseOperator):
                     f"has been submitted with id {statement_id}"
                 )
                 LivyStatementSensor(
-                    self.session_id,
-                    statement_id,
+                    session_id=self.session_id,
+                    statement_id=statement_id,
                     task_id=self.task_id,
                     http_conn_id=self.http_conn_id,
                     poke_interval=self.statemt_poll_period_sec,

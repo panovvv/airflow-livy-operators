@@ -8,7 +8,7 @@ from pytest import mark, raises
 from requests import Response
 
 from airflow_home.plugins.airflow_livy.session import LivySessionOperator
-from tests.helpers import find_json_in_args, mock_http_calls
+from tests.helpers import find_json_in_args, mock_http_session
 
 
 def test_create_session_get_id(dag, mocker):
@@ -17,7 +17,7 @@ def test_create_session_get_id(dag, mocker):
         task_id="test_create_session_get_id",
         dag=dag,
     )
-    http_response = mock_http_calls(201, content=b'{"id": 456}')
+    http_response = mock_http_session(201, content=b'{"id": 456}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     op.create_session()
     assert op.session_id == 456
@@ -128,7 +128,7 @@ def test_create_session_bad_response_codes(dag, mocker, code):
     op = LivySessionOperator(
         statements=[], task_id=f"test_create_session_bad_response_codes_{code}", dag=dag
     )
-    http_response = mock_http_calls(
+    http_response = mock_http_session(
         code, content=b"Error content", reason="Good reason"
     )
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
@@ -144,7 +144,7 @@ def test_create_session_malformed_json(dag, mocker):
     op = LivySessionOperator(
         statements=[], task_id="test_create_session_malformed_json", dag=dag
     )
-    http_response = mock_http_calls(201, content=b'{"id":{}')
+    http_response = mock_http_session(201, content=b'{"id":{}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as bre:
         op.create_session()
@@ -158,7 +158,7 @@ def test_create_session_string_id(dag, mocker):
     op = LivySessionOperator(
         statements=[], task_id="test_create_session_string_id", dag=dag
     )
-    http_response = mock_http_calls(201, content=b'{"id":"unexpectedly, a string!"}')
+    http_response = mock_http_session(201, content=b'{"id":"unexpectedly, a string!"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowException) as ae:
         op.create_session()

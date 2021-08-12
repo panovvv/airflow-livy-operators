@@ -8,7 +8,7 @@ from pytest import mark, raises
 from requests import Response
 
 from airflow_home.plugins.airflow_livy.batch import LivyBatchOperator
-from tests.helpers import find_json_in_args, mock_http_calls
+from tests.helpers import find_json_in_args, mock_http_session
 
 
 def test_jinja(dag):
@@ -42,8 +42,8 @@ def test_invalid_verification(dag):
 
 def test_submit_batch_get_id(dag, mocker):
     op = LivyBatchOperator(task_id="test_submit_batch_get_id", dag=dag)
-    http_response = mock_http_calls(201, content=b'{"id": 123}')
-    mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
+    http_session = mock_http_session(201, content=b'{"id": 123}')
+    mocker.patch.object(HttpHook, "get_conn", return_value=http_session)
     op.submit_batch()
     assert op.batch_id == 123
 
@@ -151,7 +151,7 @@ def test_submit_batch_bad_response_codes(dag, mocker, code):
     op = LivyBatchOperator(
         task_id=f"test_submit_batch_bad_response_codes_{code}", dag=dag
     )
-    http_response = mock_http_calls(
+    http_response = mock_http_session(
         code, content=b"Error content", reason="Good reason"
     )
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
@@ -165,7 +165,7 @@ def test_submit_batch_bad_response_codes(dag, mocker, code):
 
 def test_submit_batch_malformed_json(dag, mocker):
     op = LivyBatchOperator(task_id="test_submit_batch_malformed_json", dag=dag)
-    http_response = mock_http_calls(201, content=b'{"id":{}')
+    http_response = mock_http_session(201, content=b'{"id":{}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as bre:
         op.submit_batch()
@@ -177,7 +177,7 @@ def test_submit_batch_malformed_json(dag, mocker):
 
 def test_submit_batch_string_id(dag, mocker):
     op = LivyBatchOperator(task_id="test_submit_batch_string_id", dag=dag)
-    http_response = mock_http_calls(201, content=b'{"id":"unexpectedly, a string!"}')
+    http_response = mock_http_session(201, content=b'{"id":"unexpectedly, a string!"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowException) as ae:
         op.submit_batch()

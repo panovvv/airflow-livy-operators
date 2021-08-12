@@ -4,7 +4,7 @@ from airflow.providers.http.hooks.http import HttpHook
 from pytest import mark, raises
 
 from airflow_home.plugins.airflow_livy.session import LivySessionCreationSensor
-from tests.helpers import mock_http_calls
+from tests.helpers import mock_http_session
 
 
 def test_session_creation_sensor(mocker):
@@ -14,7 +14,7 @@ def test_session_creation_sensor(mocker):
         timeout=3,
         task_id="test_session_creation_sensor",
     )
-    response = mock_http_calls(
+    response = mock_http_session(
         200,
         content=b'{"id": 123, "state": "idle"}',
     )
@@ -51,7 +51,7 @@ def test_session_creation_sensor_timeout(mocker):
         timeout=3,
         task_id="test_session_creation_sensor_timeout",
     )
-    http_response = mock_http_calls(200, content=b'{"id": 123, "state": "starting"}')
+    http_response = mock_http_session(200, content=b'{"id": 123, "state": "starting"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowSensorTimeout) as te:
         sen.execute({})
@@ -70,7 +70,7 @@ def test_session_creation_sensor_malformed_json(mocker):
         timeout=5,
         task_id="test_session_creation_sensor_malformed_json",
     )
-    http_response = mock_http_calls(200, content=b'{"id": 123, "state: "starting"}')
+    http_response = mock_http_session(200, content=b'{"id": 123, "state: "starting"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as ae:
         sen.execute({})
@@ -87,7 +87,7 @@ def test_session_creation_sensor_unknown_state(mocker):
         timeout=5,
         task_id="test_session_creation_sensor_malformed_json",
     )
-    http_response = mock_http_calls(200, content=b'{"id": 123, "state": "IDK"}')
+    http_response = mock_http_session(200, content=b'{"id": 123, "state": "IDK"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowException) as ae:
         sen.execute({})

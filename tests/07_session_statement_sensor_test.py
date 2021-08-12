@@ -4,7 +4,7 @@ from airflow.providers.http.hooks.http import HttpHook
 from pytest import mark, raises
 
 from airflow_home.plugins.airflow_livy.session import LivyStatementSensor
-from tests.helpers import mock_http_calls
+from tests.helpers import mock_http_session
 
 
 def test_statement_sensor(mocker):
@@ -15,7 +15,7 @@ def test_statement_sensor(mocker):
         timeout=3,
         task_id="test_statement_sensor",
     )
-    response = mock_http_calls(
+    response = mock_http_session(
         200,
         content=b"""
         {
@@ -60,7 +60,7 @@ def test_statement_sensor_timeout(mocker):
         timeout=3,
         task_id="test_statement_sensor_timeout",
     )
-    http_response = mock_http_calls(200, content=b'{"id": 123, "state": "running"}')
+    http_response = mock_http_session(200, content=b'{"id": 123, "state": "running"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowSensorTimeout) as te:
         sen.execute({})
@@ -80,7 +80,7 @@ def test_statement_sensor_malformed_json(mocker):
         timeout=5,
         task_id="test_statement_sensor_malformed_json",
     )
-    http_response = mock_http_calls(200, content=b'{"id": 123, "state: "running"}')
+    http_response = mock_http_session(200, content=b'{"id": 123, "state: "running"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as ae:
         sen.execute({})
@@ -98,7 +98,7 @@ def test_statement_sensor_malformed_status(mocker):
         timeout=5,
         task_id="test_statement_sensor_malformed_status",
     )
-    http_response = mock_http_calls(
+    http_response = mock_http_session(
         200,
         content=b"""
         {
@@ -126,7 +126,7 @@ def test_statement_sensor_unknown_status(mocker):
         timeout=5,
         task_id="test_statement_sensor_unknown_status",
     )
-    http_response = mock_http_calls(
+    http_response = mock_http_session(
         200,
         content=b"""
         {
@@ -154,7 +154,7 @@ def test_statement_sensor_unknown_state(mocker):
         timeout=5,
         task_id="test_statement_sensor_unknown_state",
     )
-    http_response = mock_http_calls(200, content=b'{"id": 123, "state": "IDK"}')
+    http_response = mock_http_session(200, content=b'{"id": 123, "state": "IDK"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as ae:
         sen.execute({})

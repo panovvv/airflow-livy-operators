@@ -4,12 +4,12 @@ from airflow.providers.http.hooks.http import HttpHook
 from pytest import mark, raises
 
 from airflow_home.plugins.airflow_livy.batch import LivyBatchSensor
-from tests.helpers import mock_http_calls
+from tests.helpers import mock_http_session
 
 
 def test_batch_sensor(mocker):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor")
-    http_response = mock_http_calls(
+    http_response = mock_http_session(
         200,
         content=b'{"id": 2, "state": "success"}',
     )
@@ -24,7 +24,7 @@ def test_batch_sensor_timeout(mocker):
         poke_interval=1,
         timeout=2,
     )
-    http_response = mock_http_calls(200, content=b'{"id": 2, "state": "starting"}')
+    http_response = mock_http_session(200, content=b'{"id": 2, "state": "starting"}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowSensorTimeout) as te:
         sen.execute({})
@@ -71,7 +71,7 @@ def test_batch_sensor_invalid_timings(poke_interval, timeout):
 )
 def test_batch_sensor_valid_states(mocker, state):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_valid_states")
-    http_response = mock_http_calls(200, content=f'{{"id": 2, "state": "{state}"}}')
+    http_response = mock_http_session(200, content=f'{{"id": 2, "state": "{state}"}}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     assert not sen.poke({})
 
@@ -82,7 +82,7 @@ def test_batch_sensor_valid_states(mocker, state):
 )
 def test_batch_sensor_invalid_states(dag, mocker, state):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_invalid_states")
-    http_response = mock_http_calls(200, content=f'{{"id": 2, "state": "{state}"}}')
+    http_response = mock_http_session(200, content=f'{{"id": 2, "state": "{state}"}}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowException) as ae:
         sen.poke({})
@@ -94,7 +94,7 @@ def test_batch_sensor_invalid_states(dag, mocker, state):
 
 def test_batch_sensor_malformed_json(mocker):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_malformed_json")
-    http_response = mock_http_calls(200, content='{{"id": 2, "state": }}')
+    http_response = mock_http_session(200, content='{{"id": 2, "state": }}')
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
     with raises(AirflowBadRequest) as bre:
         sen.poke({})
@@ -107,7 +107,7 @@ def test_batch_sensor_malformed_json(mocker):
 @mark.parametrize("code", [404, 403, 500, 503, 504])
 def test_batch_sensor_bad_response_codes(mocker, code):
     sen = LivyBatchSensor(batch_id=2, task_id="test_batch_sensor_malformed_json")
-    http_response = mock_http_calls(
+    http_response = mock_http_session(
         code, content=b"Error content", reason="Good reason"
     )
     mocker.patch.object(HttpHook, "get_conn", return_value=http_response)
