@@ -17,8 +17,11 @@ https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/ResourceMana
 import json
 import logging
 from json import JSONDecodeError
+from codecs import encode, decode
 from numbers import Number
+from html.parser import HTMLParser
 
+import requests
 from airflow.exceptions import AirflowBadRequest, AirflowException
 from airflow.models import BaseOperator
 from airflow.providers.http.hooks.http import HttpHook
@@ -67,6 +70,7 @@ class LivyBatchSensor(BaseSensorOperator):
         http_conn_id="livy",
         soft_fail=False,
         mode="poke",
+        spill_driver_logs=False,
     ):
         if poke_interval < 1:
             raise AirflowException(
@@ -87,13 +91,21 @@ class LivyBatchSensor(BaseSensorOperator):
         )
         self.batch_id = batch_id
         self.http_conn_id = http_conn_id
+        self.spill_driver_logs = spill_driver_logs
+        self.driver_log_url = None
 
     def poke(self, context):
         logging.info(f"Getting batch {self.batch_id} status...")
         endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
         response = HttpHook(method="GET", http_conn_id=self.http_conn_id).run(endpoint)
         try:
-            state = json.loads(response.content)["state"]
+            batch_status = json.loads(response.content)
+            logging.debug(f"Response: {batch_status}")
+            state = batch_status["state"]
+            if self.spill_driver_logs and not self.driver_log_url:
+                if batch_status["appInfo"]["driverLogUrl"]:
+                    self.driver_log_url = batch_status["appInfo"]["driverLogUrl"]
+                    logging.debug(f"Driver log URL: {self.driver_log_url}")
         except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.state", response, self.batch_id)
             raise AirflowBadRequest(ex)
@@ -104,8 +116,50 @@ class LivyBatchSensor(BaseSensorOperator):
             return False
         if state == "success":
             logging.info(f"Batch {self.batch_id} has finished successfully!")
+            if self.spill_driver_logs and self.driver_log_url:
+                self.spill_batch_driver_logs()
             return True
+        if self.spill_driver_logs and self.driver_log_url:
+            self.spill_batch_driver_logs()
         raise AirflowException(f"Batch {self.batch_id} failed with state '{state}'")
+
+    def spill_batch_driver_logs(self):
+        '''
+        The function is using Livy API to get the information about the driver process logs URL and then uses it to pull
+        stdout/stderr text logs from driver. Works for YARN-based Spark clusters.
+        :return: none
+        '''
+        class DriverLogsParser(HTMLParser):
+            def __init__(self):
+                self.is_pre = False
+                self.text = None
+                super().__init__()
+
+            def handle_starttag(self, tag, attrs):
+                if tag == 'pre':
+                    self.is_pre = True
+
+            def handle_endtag(self, tag):
+                self.is_pre = False
+
+            def handle_data(self, data):
+                if self.is_pre:
+                    self.text = data
+
+            def error(self, message):
+                raise RuntimeError(f"Error while parsing HTML document: {message}")
+
+        try:
+            # This is entire HTML document with the stdout content between <pre>...</pre> tags.
+            stdout_html = requests.get(f"{self.driver_log_url}/stdout/?start=0")
+            html_string = decode(stdout_html.content, 'utf-8')
+            parser = DriverLogsParser()
+            parser.feed(html_string)
+            stdout = parser.text
+            logging.info(f"Driver stdout:\n{stdout}\nEnd of Driver stdout.")
+
+        except (JSONDecodeError, LookupError, TypeError, RuntimeError, ConnectionError) as ex:
+            logging.error(f"Error while pulling Driver logs: {ex}")
 
 
 class LivyBatchOperator(BaseOperator):
@@ -137,6 +191,7 @@ class LivyBatchOperator(BaseOperator):
         http_conn_id_spark="spark",
         http_conn_id_yarn="yarn",
         spill_logs=True,
+        spill_driver_logs=False,
         *args,
         **kwargs,
     ):
@@ -170,6 +225,7 @@ class LivyBatchOperator(BaseOperator):
         self.http_conn_id_spark = http_conn_id_spark
         self.http_conn_id_yarn = http_conn_id_yarn
         self.spill_logs = spill_logs
+        self.spill_driver_logs = spill_driver_logs
         self.batch_id = None
 
     def execute(self, context):
@@ -182,6 +238,7 @@ class LivyBatchOperator(BaseOperator):
                 http_conn_id=self.http_conn_id_livy,
                 poke_interval=self.poll_period_sec,
                 timeout=self.timeout_minutes * 60,
+                spill_driver_logs=self.spill_driver_logs,
             ).execute(context)
             if self.verify_in in VERIFICATION_METHODS:
                 logging.info(
