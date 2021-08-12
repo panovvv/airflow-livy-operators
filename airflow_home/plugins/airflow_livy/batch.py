@@ -16,10 +16,10 @@ https://hadoop.apache.org/docs/current/hadoop-yarn/hadoop-yarn-site/ResourceMana
 
 import json
 import logging
-from json import JSONDecodeError
-from codecs import encode, decode
-from numbers import Number
+from codecs import decode
 from html.parser import HTMLParser
+from json import JSONDecodeError
+from numbers import Number
 
 import requests
 from airflow.exceptions import AirflowBadRequest, AirflowException
@@ -123,11 +123,12 @@ class LivyBatchSensor(BaseSensorOperator):
         raise AirflowException(f"Batch {self.batch_id} failed with state '{state}'")
 
     def spill_batch_driver_logs(self):
-        '''
+        """
         The function is using Livy API to get the information about the driver process logs URL and then uses it to pull
         stdout/stderr text logs from driver. Works for YARN-based Spark clusters.
         :return: none
-        '''
+        """
+
         class DriverLogsParser(HTMLParser):
             def __init__(self):
                 self.is_pre = False
@@ -135,7 +136,7 @@ class LivyBatchSensor(BaseSensorOperator):
                 super().__init__()
 
             def handle_starttag(self, tag, attrs):
-                if tag == 'pre':
+                if tag == "pre":
                     self.is_pre = True
 
             def handle_endtag(self, tag):
@@ -151,13 +152,19 @@ class LivyBatchSensor(BaseSensorOperator):
         try:
             # This is entire HTML document with the stdout content between <pre>...</pre> tags.
             stdout_html = requests.get(f"{self.driver_log_url}/stdout/?start=0")
-            html_string = decode(stdout_html.content, 'utf-8')
+            html_string = decode(stdout_html.content, "utf-8")
             parser = DriverLogsParser()
             parser.feed(html_string)
             stdout = parser.text
             logging.info(f"Driver stdout:\n{stdout}\nEnd of Driver stdout.")
 
-        except (JSONDecodeError, LookupError, TypeError, RuntimeError, ConnectionError) as ex:
+        except (
+            JSONDecodeError,
+            LookupError,
+            TypeError,
+            RuntimeError,
+            ConnectionError,
+        ) as ex:
             logging.error(f"Error while pulling Driver logs: {ex}")
 
 
