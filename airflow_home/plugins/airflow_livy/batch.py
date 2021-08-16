@@ -124,8 +124,9 @@ class LivyBatchSensor(BaseSensorOperator):
 
     def spill_batch_driver_logs(self):
         """
-        The function is using Livy API to get the information about the driver process logs URL and then uses it to pull
-        stdout/stderr text logs from driver. Works for YARN-based Spark clusters.
+        The function is using Livy API to get the information about the driver process
+        logs URL and then uses it to pull stdout/stderr text logs from driver.
+        Works for YARN-based Spark clusters.
         :return: none
         """
 
@@ -150,7 +151,8 @@ class LivyBatchSensor(BaseSensorOperator):
                 raise RuntimeError(f"Error while parsing HTML document: {message}")
 
         try:
-            # This is entire HTML document with the stdout content between <pre>...</pre> tags.
+            # This is entire HTML document with the stdout content between
+            # <pre>...</pre> tags.
             stdout_html = requests.get(f"{self.driver_log_url}/stdout/?start=0")
             html_string = decode(stdout_html.content, "utf-8")
             parser = DriverLogsParser()
