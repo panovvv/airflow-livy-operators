@@ -139,20 +139,19 @@ class LivyBatchSensor(BaseSensorOperator):
             return False
         if state == "success":
             logging.info(f"Batch {self.batch_id} has finished successfully!")
-            if self.spill_driver_logs and self.driver_log_url:
-                self.spill_batch_driver_logs()
-            return True
-        if self.spill_driver_logs and self.driver_log_url:
             self.spill_batch_driver_logs()
+            return True
+        self.spill_batch_driver_logs()
         raise AirflowException(f"Batch {self.batch_id} failed with state '{state}'")
 
     def spill_batch_driver_logs(self):
         """
-        The function is using Livy API to get the information about the driver process
-        logs URL and then uses it to pull stdout/stderr text logs from driver.
-        Works for YARN-based Spark clusters.
+        Get the information about the driver process logs URL and then uses it to pull
+        stdout/stderr text logs from driver. Works for YARN-based Spark clusters.
         :return: none
         """
+        if not self.spill_driver_logs or not self.driver_log_url:
+            return
 
         try:
             # This is entire HTML document with the stdout content between
