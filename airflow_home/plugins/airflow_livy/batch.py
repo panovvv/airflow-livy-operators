@@ -101,10 +101,13 @@ class LivyBatchSensor(BaseSensorOperator):
             batch_status = json.loads(response.content)
             logging.debug(f"Response: {batch_status}")
             state = batch_status["state"]
-            if self.spill_driver_logs and not self.driver_log_url:
-                if batch_status["appInfo"]["driverLogUrl"]:
-                    self.driver_log_url = batch_status["appInfo"]["driverLogUrl"]
-                    logging.debug(f"Driver log URL: {self.driver_log_url}")
+            if (
+                self.spill_driver_logs
+                and not self.driver_log_url
+                and batch_status["appInfo"]["driverLogUrl"]
+            ):
+                self.driver_log_url = batch_status["appInfo"]["driverLogUrl"]
+                logging.debug(f"Driver log URL: {self.driver_log_url}")
         except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.state", response, self.batch_id)
             raise AirflowBadRequest(ex)
