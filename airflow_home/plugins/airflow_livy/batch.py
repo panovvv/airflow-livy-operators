@@ -118,7 +118,7 @@ class LivyBatchSensor(BaseSensorOperator):
         if self.spill_driver_logs and not self.driver_log_url:
             if batch_status["appInfo"]["driverLogUrl"]:
                 self.driver_log_url = batch_status["appInfo"]["driverLogUrl"]
-                logging.debug(f"Driver log URL: {self.driver_log_url}"
+                logging.debug(f"Driver log URL: {self.driver_log_url}")
 
     def poke(self, context):
         logging.info(f"Getting batch {self.batch_id} status...")
