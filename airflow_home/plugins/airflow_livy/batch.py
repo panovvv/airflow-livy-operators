@@ -59,6 +59,27 @@ def log_response_error(lookup_path, response, batch_id=None):
     logging.error(msg)
 
 
+class DriverLogsParser(HTMLParser):
+    def __init__(self):
+        self.is_pre = False
+        self.text = None
+        super().__init__()
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "pre":
+            self.is_pre = True
+
+    def handle_endtag(self, tag):
+        self.is_pre = False
+
+    def handle_data(self, data):
+        if self.is_pre:
+            self.text = data
+
+    def error(self, message):
+        raise RuntimeError(f"Error while parsing HTML document: {message}")
+
+
 class LivyBatchSensor(BaseSensorOperator):
     def __init__(
         self,
@@ -93,6 +114,12 @@ class LivyBatchSensor(BaseSensorOperator):
         self.spill_driver_logs = spill_driver_logs
         self.driver_log_url = None
 
+    def set_driver_logs_url(self, batch_status):
+        if self.spill_driver_logs and not self.driver_log_url:
+            if batch_status["appInfo"]["driverLogUrl"]:
+                self.driver_log_url = batch_status["appInfo"]["driverLogUrl"]
+                logging.debug(f"Driver log URL: {self.driver_log_url}"
+
     def poke(self, context):
         logging.info(f"Getting batch {self.batch_id} status...")
         endpoint = f"{LIVY_ENDPOINT}/{self.batch_id}"
@@ -101,10 +128,7 @@ class LivyBatchSensor(BaseSensorOperator):
             batch_status = json.loads(response.content)
             logging.debug(f"Response: {batch_status}")
             state = batch_status["state"]
-            if self.spill_driver_logs and not self.driver_log_url:
-                if batch_status["appInfo"]["driverLogUrl"]:
-                    self.driver_log_url = batch_status["appInfo"]["driverLogUrl"]
-                    logging.debug(f"Driver log URL: {self.driver_log_url}")
+            self.set_driver_logs_url(batch_status)
         except (JSONDecodeError, LookupError) as ex:
             log_response_error("$.state", response, self.batch_id)
             raise AirflowBadRequest(ex)
@@ -129,26 +153,6 @@ class LivyBatchSensor(BaseSensorOperator):
         Works for YARN-based Spark clusters.
         :return: none
         """
-
-        class DriverLogsParser(HTMLParser):
-            def __init__(self):
-                self.is_pre = False
-                self.text = None
-                super().__init__()
-
-            def handle_starttag(self, tag, attrs):
-                if tag == "pre":
-                    self.is_pre = True
-
-            def handle_endtag(self, tag):
-                self.is_pre = False
-
-            def handle_data(self, data):
-                if self.is_pre:
-                    self.text = data
-
-            def error(self, message):
-                raise RuntimeError(f"Error while parsing HTML document: {message}")
 
         try:
             # This is entire HTML document with the stdout content between
