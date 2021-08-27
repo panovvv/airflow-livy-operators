@@ -216,7 +216,7 @@ up)
   export_airflow_env_vars
   init_airflow
   . "${SCRIPT_DIR}/venv/bin/activate"
-  pip install airflow-livy-operators==0.5
+  pip install airflow-livy-operators==0.6
   _echo_color cyan "Running Airflow..."
   airflow scheduler &
   airflow webserver
