@@ -1,5 +1,5 @@
 # PySpark to run and debug batch jobs locally
-pyspark==3.0.2
+pyspark==3.2.2
 
 # PySpark stubs: better coding experience for PySpark
 pyspark-stubs==3.0.0.post1
